@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.env
+*.vcf
+
+output_old
+utils
+figures_old
+output-optimization
+output-resultRepetition
+optSetups
+simSetups
+runRepeatOpt*.md

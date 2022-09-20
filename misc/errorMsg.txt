@@ -1,0 +1,85 @@
+# "nGen-5_plotBudjetPerGen-200_he-0.7"
+# seed
+# $BO
+# [1] 118684
+# 
+# $rand
+# [1] 159484
+# 
+# $repBO
+# [1] 393668
+# 
+# $repRand
+# [1] 137826
+
+Start Bayesian Optimization...
+Starting parallelization in mode=multicore with cpus=2.
+Computing y column(s) for design. Not provided.
+Mapping in parallel (load balanced): mode = multicore; level = mlrMBO.feval; cpus = 2; elements = 5.
+[mbo] 0: i=0.935; iHomo=0.666; bRep=0.421; phenoFreq=1 : BV_mean = 63.5 : 15.0 secs : initdesign
+[mbo] 0: i=0.0781; iHomo=0.156; bRep=0.628; phenoFreq=4 : BV_mean = 136 : 7.5 secs : initdesign
+[mbo] 0: i=0.306; iHomo=0.555; bRep=0.854; phenoFreq=3 : BV_mean = 76.4 : 8.0 secs : initdesign
+[mbo] 0: i=0.406; iHomo=0.926; bRep=0.252; phenoFreq=2 : BV_mean = 126 : 10.8 secs : initdesign
+[mbo] 0: i=0.738; iHomo=0.243; bRep=0.083; phenoFreq=5 : BV_mean = 114 : 7.1 secs : initdesign
+Mapping in parallel (load balanced): mode = multicore; level = mlrMBO.feval; cpus = 2; elements = 2.
+
+ Error in stopWithJobErrorMessages(inds, vcapply(result.list[inds], as.character)) : 
+  Errors occurred in 1 slave jobs, displaying at most 10 of them:
+
+00001: Error : from glmnet Fortran code (error code 7777); All used predictors have zero variance
+ 
+13.
+	
+stop(obj)
+ 
+12.
+	
+stopf("Errors occurred in %i slave jobs, displaying at most 10 of them:\n\n%s\n%s", 
+    n, collapse(msgs, sep = "\n"), extra.msg)
+ 
+11.
+	
+stopWithJobErrorMessages(inds, vcapply(result.list[inds], as.character))
+ 
+10.
+	
+checkResultsAndStopWithErrorsMessages(res)
+ 
+9.
+	
+parallelMap(wrapFun, xs.trafo, level = "mlrMBO.feval", impute.error = if (is.null(imputeY)) NULL else identity)
+ 
+8.
+	
+evalTargetFun.OptState(opt.state, xs = xs, extras = extras)
+ 
+7.
+	
+evalProposedPoints.OptState(opt.state, prop)
+ 
+6.
+	
+mboTemplate.OptState(opt.state)
+ 
+5.
+	
+mboTemplate(opt.state)
+ 
+4.
+	
+mboTemplate.OptProblem(opt.problem)
+ 
+3.
+	
+mboTemplate(opt.problem)
+ 
+2.
+	
+mbo(fun = fun, design = initDes, learner = learner, control = control, 
+    show.info = TRUE) at
+ optimization.R#181
+1.
+	
+bayesianOptimization(mainSeed = seed$BO, simSetup = setup, optP = optP, 
+    outputFolder = optResultFolder)
+ 

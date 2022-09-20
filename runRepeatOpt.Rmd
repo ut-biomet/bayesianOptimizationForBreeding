@@ -1,0 +1,496 @@
+---
+title: "Repetition of Bayesian optimization"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitStartTime <- Sys.time()
+knitr::opts_chunk$set(echo = TRUE,
+                      # format
+                      tidy = FALSE, # format code with 'tidy_source()'
+                      tidy.opts = list(width.cutoff = 80),
+                      strip.white = TRUE #remove the white lines in the beginning or end of a source chunk
+)
+```
+
+# Bayesian Optimisation for breeding
+
+This file is the main file running Bayesian and Random optimizations.
+
+
+### Load libraries
+
+Loading the library and source the [`./src/utils.R`](./src/utils.R) file containing a R function which can send some notification to the user.
+
+```{r packages}
+suppressPackageStartupMessages({
+  library(gaston)
+  library(TSP)
+  library(breedSimulatR)
+  library(digest)
+  library(glmnet)
+  library(mlrMBO)
+  library(parallelMap)
+  library(parallel)
+  library(lhs)
+  library(dotenv)
+})
+
+# load notification function
+source("src/utils.R")
+```
+
+Specify some information. Here we will repeat the optimizations `nRepOpt` (1024) times, and then after each optimization, we will repeat `repRes_nRep` (1) time the breeding scheme using the optimized parameters (on `repRes_nCpus` (2) cores).
+
+We also specify the locations of the main folders in which we will save the outputs of this script.
+
+```{r}
+load_dot_env()
+nCPU <- detectCores()
+# nRepOpt <- 1 # number of optimization repetitions
+nRepOpt <- 1024 # number of optimization repetitions
+repRes_nRep <- 1 # number of opt result evaluations
+repRes_nCpus <- 2 # number of core to use for opt result evaluations
+
+simSetupFolder <- "simSetups"
+optSetupFolder <- "optSetups"
+optResultFolder <- "output-optimization"
+repResultFolder <- "output-resultRepetition"
+```
+
+We create new folders inside the main ones to not overwrite previous results.
+
+```{r create-outFolders}
+date <- format(knitStartTime, "%Y-%m-%d_%H-%M-%S")
+simSetupFolder <- paste0(simSetupFolder, "/", date)
+optSetupFolder <- paste0(optSetupFolder, "/", date)
+optResultFolder <- paste0(optResultFolder, "/", date)
+repResultFolder <- paste0(repResultFolder, "/", date)
+
+for (dir in c(simSetupFolder,
+              optSetupFolder,
+              optResultFolder,
+              repResultFolder)) {
+  dir.create(dir)
+  }
+```
+
+
+
+## Generate simulation setups
+
+"Simulation setups" contains all the information about the breeders constraints (eg. the initial population, the budgets and costs, the breeding algorithm...). This helps to run different optimization with same breeding constraints.
+
+We will generate different setups for the optimization because we will apply our optimization on different set of constraints (ie. scenario).
+
+
+### Parameters common to all setups
+
+First let's specify the constraints which are common to all our scenario which are:
+
+- `dataFile`: the genetic data of our initial population
+- `lchrCm` : the length of the chromosomes
+- `nQTN` : number of QTN (ie. markers with effects) to keep for the simulation
+- `nSNP` : the number of marker to keep for the simulation
+- `mu` : phenotypic mean
+- `ve` : NULL environmental variance (not necessary because we will specify the heritability of the initial population)
+- `plotCost`: cost for phenotyping one plot
+- `newIndCost` : cost for generating one new individual
+- `selectMateInds`: Function used by `breedSimOpt` which mate the selected individuals
+- `createModel`: Function used by `breedSimOpt` which create the prediction model (predict the genetic values of individual from their genotypes)
+- `breedSimOpt`: Function which simulate the breeding. **This is our objective function**.
+- `aggrFun`: Function which will be called by `breedSimOpt` to aggregate the genetic values of the final population.
+- `aggrFunName`: Name of the above function
+- `specName`: Specie's name 
+- `popName`: Initial population name
+- `traitName`: Name of the phenotypic trait of interest
+- `seed`: Random seed used by the function generating the simulation setup to sample the genetic markers and markers effects used in the simulation.
+- `verbose`: Should the function generating the setup be be verbose.
+
+
+```{r varSetup-1}
+# here, we load the simulations functions
+# those files are sourced in new child environments of the global one so that
+# the functions of interest will contain those environments and the dependencies
+# of the main function will be retreived
+# For example the function `breedSimOpt` which call the function
+# `getSimulParams` can be executed because it contain an environment where
+# `getSimulParams` is defined.
+
+selMate_env <- new.env(parent = globalenv())
+source('src/selectMatFun.R', local = selMate_env)
+
+genoPred_env <- new.env(parent = globalenv())
+source('src/genoPred.R', local = genoPred_env)
+
+sim_env <- new.env(parent = globalenv())
+source('src/simulation.R', local = sim_env)
+```
+
+```{r varSetup-2}
+fixedSetupParams <- list(
+  dataFile = 'data/fullData.vcf',
+  lchrCm = 100,
+  nQTN = 1000,
+  nSNP = 3000,
+  mu = 0,
+  ve = NULL,
+  plotCost = 1,
+  newIndCost = 1,
+  selectMateInds = selMate_env$selectMate,
+  createModel = genoPred_env$createModel,
+  breedSimOpt = sim_env$breedSimOpt,
+  aggrFun = mean,
+  aggrFunName = 'mean',
+  specName = "bayesOpt",
+  popName = "initialPop",
+  traitName = "trait1",
+  seed = 2021,
+  verbose = TRUE
+)
+```
+
+### Parameters different for some setups
+
+We will create setups with different number of selection cycles (`nGen`), different values of heritability (`he`), and different budgets (`plotBudjetPreGen`).
+
+Setups with all of these combination will be created.
+
+```{r varSetup-3}
+varSetupParams <- list(
+  nGen = c(5, 10),
+  plotBudjetPerGen = c(200, 600),
+  # he = c(0.7, 0.3)
+  he = c(0.3)
+)
+```
+
+### Create simulations setups
+
+The function `setupSimulation` creating the setups objects is defined in [./src/setupSimulation.R](./src/setupSimulation.R).
+
+```{r load-SimSetup-function}
+# load the `setupSimulation` function
+source('src/setupSimulation.R')
+```
+
+```{r genSetup}
+# generate the setups for all combination of `varSetupParams`
+
+if (any(names(varSetupParams) %in% names(fixedSetupParams))) {
+  stop('same parameter detected in varSetupParams and fixedSetupParams')
+}
+varSetupParams <- expand.grid(varSetupParams)
+setupStart <- Sys.time()
+setupsFiles <- mclapply(
+  split(varSetupParams, seq(nrow(varSetupParams))),
+  function(x) {
+    setupName <- paste0(names(x), '-', x, collapse = '_')
+
+    setupParams <- c(as.list(x),
+                     fixedSetupParams,
+                     outputFolder = simSetupFolder,
+                     setupName = setupName,
+                     list(varSetupParams = colnames(varSetupParams)))
+    do.call(setupSimulation, setupParams)
+    setupName
+  },
+  mc.set.seed = FALSE,
+  mc.cores = max(min(nrow(varSetupParams), nCPU), 1),
+  mc.preschedule = FALSE
+)
+
+cat("Simulation setup done in:\n")
+print(Sys.time() - setupStart)
+```
+
+
+## Optimization setup
+
+"Optimization setups" contains all the information about the optimization parameters (eg. number of iterations, number of points evaluated parallely at each iterations, aquisition function (for bayesian otpimization) ... ). This helps to run the same on different breeding constraints.
+
+Only one optimization setup will be used.
+
+```{r optSetup}
+optP <- list(
+  kernel = 'gauss', # kernel of the gaussian process
+  final.method = 'best.predicted', # see mlrmbo documentation (`??makeMBOControl`) and below
+  acquFunction = makeMBOInfillCritEI(),
+  filter.proposed.points = TRUE, # should bayesian opt avoid sampling parameters too close to each-other
+  filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
+  propose.points = 2, # number of points evaluated at each iteration
+  nCpusProposePoints = 2, # number of core to use for evaluating the points at each iteration
+  totalIter = 15, # total number of iteration
+  # time.budget = 60*30, # total time available for the optimization
+  initTrainSize = 5, # initial training data size
+  funEval = 1, # see below
+  nCpusFunEval = 1 # see below
+)
+
+optP <- c(optP,
+          setupName = paste0('default_nIter', optP$totalIter))
+
+saveRDS(optP, paste0(optSetupFolder, '/optSetup.rds'))
+```
+
+- `final.method`: How should Bayesian optimization propose the optimal point? Here it will return the explored point with the highest predicted value of the objective function.
+- `funEval`: If the objective function is too noisy, instead of evaluating it only once for each propose points, it might be interesting to evaluate it several times and use the mean of the results so that the variance of the objective function appear smaller for the bayesian optimization. This parameter specify how many time the optimization function should be evaluated for each proposed points. (`nCpusFunEval` specify if this should be done in parallel and on how many cores).
+
+
+
+## Optimization repetition
+
+Now we have our setups of both the simulation and the optimizations, we are almost ready for launching the optimizations.
+
+### Load simulation and optimization setups
+
+Get all the simulations setups
+
+```{r opt-loadSimSetup}
+setupDir <- simSetupFolder
+setupsFiles <- list.files(setupDir, full.names = TRUE)
+simList <- lapply(setupsFiles, readRDS)
+```
+
+Get all the optimization setups
+
+```{r opt-loadOptSetup}
+setupDir <- optSetupFolder
+setupsFiles <- list.files(setupDir, full.names = TRUE)
+optList <- lapply(setupsFiles, readRDS)
+```
+
+```{r opt-setup-combinations}
+# create all combination of simSetup and optSetup
+simSetupList <- vector(mode = 'list', length = length(simList) * length(optList))
+optSetupList <- vector(mode = 'list', length = length(simList) * length(optList))
+i <- 1
+for (s in seq_along(simList)) {
+  for (o in seq_along(optList)) {
+    simSetupList[[i]] <- simList[[s]]
+    optSetupList[[i]] <- optList[[o]]
+    i <- i + 1
+  }
+}
+```
+
+`simSetupList` and `optSetupList` are 2 lists of the same size (number of simulation setups times number of optimization setups). We can iterate on these lists to perform all the combination of simulation setups and optimization setups. 
+
+
+### Generate optimization RND seeds
+
+A lot of stochasticity are involved in the breeding simulation, and in the optimizations algorithm. In order to make the results reproducible, we need to fix some random seeds. Those seeds can also help us to identify each of optimization run (as a remainder, we will repeat the optimizations several times -16 or 1024 times-).
+
+We will use one seed for each optimization run (for both the bayesian and random optimization) and for the "result evaluations".
+
+
+```{r opt-seeds}
+if (length(unique(varSetupParams$he)) != 1) {
+  set.seed(1920)
+} else if (unique(varSetupParams$he) == 0.7) {
+  set.seed(1809)
+} else if (unique(varSetupParams$he) == 0.3) {
+  set.seed(1958)
+}
+
+(optSeedBO <- sample.int(1000000, length(simSetupList) * nRepOpt))
+(optSeedRand <- sample.int(1000000, length(simSetupList) * nRepOpt))
+(optSeedRepResBO <- sample.int(1000000, length(simSetupList) * nRepOpt))
+(optSeedRepResRand <- sample.int(1000000, length(simSetupList) * nRepOpt))
+
+# merge seeds
+seeds <- vector(mode = 'list', length = length(simSetupList) * nRepOpt)
+for (i in seq_along(optSeedBO)) {
+  seeds[[i]] <- list(BO = optSeedBO[i], # seed for Bayesian optimization
+                     rand = optSeedRand[i], # seed for Random optimization
+                     repBO = optSeedRepResBO[i], # seed for repeating the results of Bayesian optimization
+                     repRand = optSeedRepResRand[i]) # seed for repeating the results of Random optimization
+}
+```
+`seeds` is a list of "number of combination of setup times the number of optimization repetition" lists containing the list of seed to use.
+
+### Prepare optimization
+
+The function `bayesianOptimization` doing the Bayesian optimization and `randomExploration` (ie. random optimization) doing the random optimization are defined in [./src/optimization.R](./src/optimization.R).
+
+```{r load-opt-function}
+# load the `bayesianOptimization` and `ranrandomExploration` functions
+source('src/optimization.R')
+```
+
+The setups lists' size do not take in account the number of optimization repetition, let's elongate them by replicate them for each number of optimization repetition.
+
+```{r prepareOpt}
+# duplicate setup lists according to the number of repetitions
+simSetupList <- rep(simSetupList, each = nRepOpt)
+optSetupList <- rep(optSetupList, each = nRepOpt)
+```
+
+Check that all setup list and seed list have the same length.
+
+```{r checkRunOpt}
+stopifnot(length(simSetupList) == length(optSeedBO))
+stopifnot(length(optSetupList) == length(optSeedBO))
+```
+
+Save the list of seed we plan to use. This is useful to identify if/which optimization runs failed.
+
+```{r}
+seeds.df <- lapply(1:length(simSetupList), function(i) {
+  c(name = simSetupList[[i]]$setupName,
+  seeds[[i]])
+})
+seeds.df <- do.call(rbind, seeds.df)
+write.csv(seeds.df, file = 'seedList.csv', row.names = FALSE, col.names = TRUE)
+```
+
+Check how many CPU's cores we plan to use during the optimizations.
+
+```{r prepareOpt.2}
+# detect the highest number of cpus used in the optimization setups
+# This information is important to not use more core than what is available
+maxOptCpu <- 0
+for (optP in optSetupList) {
+  cpu <- optP$nCpusProposePoints * optP$nCpusFunEval
+  maxOptCpu <- max(maxOptCpu, cpu)
+}
+```
+
+### Run optimization
+
+Now we can run the optimization.
+
+For that we will iterate on the simulation setups list (`simSetupList`), the optimizations setups list (`optSetupList`) and the seeds list (`seeds`).
+
+For each iteration, we will:
+1. Run the bayesian optimization
+2. Repeat the breeding simulations using the bayesian optimization's results
+3. Run the random optimization
+2. Repeat the breeding simulations using the random optimization's results
+
+```{r run-opt}
+optStart <- Sys.time()
+
+invisible(mcmapply(
+  function(setup, seed, optP) {
+    
+    # do bayesian optimization
+    bayesRes <- bayesianOptimization(
+      mainSeed = seed$BO,
+      simSetup = setup,
+      optP = optP,
+      outputFolder = optResultFolder)
+    # run several breeding simulation using the "bayesian optimized" parameters
+    repResBO <- repeatOptResults(bayesRes,
+                                 nRep = repRes_nRep,
+                                 nCpus = repRes_nCpus,
+                                 mainSeed = seed$repBO,
+                                 outputFolder = repResultFolder)
+
+    # do random optimization
+    randOptRes <- randomExploration(
+      mainSeed = seed$rand,
+      simSetup = setup,
+      optP = optP,
+      outputFolder = optResultFolder)
+    # run several breeding simulation using the "random optimized" parameters
+    repResRand <- repeatOptResults(randOptRes,
+                                 nRep = repRes_nRep,
+                                 nCpus = repRes_nCpus,
+                                 mainSeed = seed$repRand,
+                                 outputFolder = repResultFolder)
+    
+    # send notification about the progress
+    nResFile <- length(list.files(repResultFolder))
+    if (nResFile %in% 2*floor(quantile(seq(length(simSetupList)*2))/2)) {
+      progress <- nResFile / (length(simSetupList) * 2)
+      msg <- paste0('Optimization in progress...\n',
+                    progress * 100, "% ", 'in ',
+                    as.character.POSIXt(difftime(Sys.time(), optStart))
+      )
+      sendNotification(msg)
+    }
+    
+    
+    invisible(NULL)
+
+  },
+  setup = simSetupList,
+  optP = optSetupList,
+  seed = seeds,
+  SIMPLIFY = FALSE,
+  mc.cores = max(min(length(simSetupList), floor(nCPU/maxOptCpu)), 1),
+  mc.preschedule = FALSE)
+)
+
+cat("Optimization done in:\n")
+print(Sys.time() - optStart)
+```
+
+
+## Optimization and results repetitions results
+
+The results are saved in the specified folders as `.rds` files and can be load using the `readRDS` function.
+
+### Optimization results
+
+Optimization results consist in a named list of:
+
+- `resultType`: Either `randOpt` or `bayesOpt`
+- `results`: data.frame containing the optimization output (each observed points information)
+- `optP`: optimization setup
+- `optSeed`: seed used for the optimization
+- `simSetup`: simulation setup
+- `bestPoint`: optimal point value
+- `bestPoint_pred`: Objective function's predicted value at the optimal point
+- `mboRawRes`: (only for bayesian optimization) Raw results of the `mlrMBO::mbo` function
+- `startTime`: Starting time of the optimization
+
+One should be able to replicate the optimization by running:
+
+```r
+previousOpt <- readRDS('path/to/previous/optimizationResults.rds')
+if(previousOpt$resultType == 'bayesOpt'){
+  replicatedOpt <- bayesianOptimization(
+    mainSeed = previousOpt$optSeed,
+    simSetup = previousOpt$simSetup,
+    optP = previousOpt$optP,
+    outputFolder = 'folder/where/to/save/the/replicated/optimization')
+}else if (previousOpt$resultType == 'randOpt'){
+  replicatedOpt <- bayesianOptimization(
+    mainSeed = previousOpt$optSeed,
+    simSetup = previousOpt$simSetup,
+    optP = previousOpt$optP,
+    outputFolder = 'folder/where/to/save/the/replicated/optimization')
+}
+```
+
+### Repetition results
+
+Repetition results consist in a named list of:
+
+- `resultType`: always `repRes`
+- `results`: data.frame containing the information about the repeated breeding simulations
+- `optResults`: optimization results from which the repetitions is bases (see above).
+- `mainSeed`: seed used to replicated the breeding simulation
+- `startTime`: Staring time of the optimization
+
+
+
+# Appendix {-}
+
+There is some information about the R session used to run the optimizations:
+
+```{r sessionInfo, echo=FALSE}
+  options(max.print = 10000)
+  cat("Document generated in:\n")
+  print(Sys.time() - knitStartTime)
+  if (Sys.info()["sysname"] == "Linux") {
+    cat("\nCPU: ")
+    cat(unique(system("awk -F': ' '/model name/{print $2}' /proc/cpuinfo", intern = T)))
+    cat("\nMemory total size: ")
+    cat(as.numeric(system("awk '/MemTotal/ {print $2}' /proc/meminfo", intern = T))*10^(-6), "GB")
+  }
+  cat("\n\n\nSession information:\n")
+  print(sessionInfo(), locale = FALSE)
+```
