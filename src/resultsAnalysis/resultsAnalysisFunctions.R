@@ -257,7 +257,7 @@ boxPlot_nIter <- function(dta, outDir) {
                y = "Number of optimization iterations",
                title = "Number of optimization iterations",
                subtitle = paste0(
-                 'he = ', unique(dta$he),
+                 'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen),
                  '\nnumber of Bayesian optimization: ', sum(optLenght$opMethod == "Bayesian Optimization"),
@@ -298,7 +298,7 @@ boxPlot_cumMax <- function(dta, outDir) {
                col = "Optimization method",
                title = "Cumulative observed maximum over the optimization iterations",
                subtitle = paste0(
-                 'he = ', unique(dta$he),
+                 'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen))
         )
@@ -339,7 +339,7 @@ lines_cumMax <- function(dta, outDir) {
                col = "Optimization method",
                title = "Cumulative observed maximum over the optimization iterations",
                subtitle = paste0(
-                 'he = ', unique(dta$he),
+                 'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen))
         ))
@@ -402,7 +402,7 @@ plot_optimization_progress <- function(dta, outDir) {
                title = "Optimization progress",
                subtitle = paste0(
                  'Scenario: ',
-                 'he = ', unique(dta$he),
+                 'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen)#,
                  # '; optimization repetition: ',
@@ -515,7 +515,7 @@ plot_optimization_pca <- function(dta, outDir) {
              shape = "Sampling method",
              title = "Optimization points PCA visualisation - Iteration",
              subtitle = paste0(
-               'he = ', unique(dtaList[[m]]$he),
+               'H2 = ', unique(dtaList[[m]]$he),
                '; nGen = ', unique(dtaList[[m]]$nGen),
                '; B/gen = ', unique(dtaList[[m]]$budget/dtaList[[m]]$nGen)))#,
                # '; optimization repetition: ',
@@ -584,7 +584,7 @@ plot_optimization_pca <- function(dta, outDir) {
              shape = "Sampling method",
              title = "Optimization points PCA visualisation - Breeding Value",
              subtitle = paste0(
-               'he = ', unique(dtaList[[m]]$he),
+               'H2 = ', unique(dtaList[[m]]$he),
                '; nGen = ', unique(dtaList[[m]]$nGen),
                '; B/gen = ', unique(dtaList[[m]]$budget/dtaList[[m]]$nGen)))#,
                # '; optimization repetition: ',
@@ -619,17 +619,19 @@ plot_optimization_pca <- function(dta, outDir) {
     plotList[[m]]$BV_mean <- p
   }
 
-
   p <- (fviz_pca_var(pcaRes)
         + labs(
           title = 'Optimization points PCA - Graph of variables',
           subtitle = paste0(
-            'he = ', unique(dtaList[[m]]$he),
+            'H2 = ', unique(dtaList[[m]]$he),
             '; nGen = ', unique(dtaList[[m]]$nGen),
             '; B/gen = ', unique(dtaList[[m]]$budget/dtaList[[m]]$nGen)))
             # '; optimization repetition: ',
             # unique(dtaList[[m]]$id)))
-        + theme(panel.background = element_rect('white')))
+        + theme(plot.background = element_rect(fill = "white", color = "white")))
+
+
+
 
   plotList$var <- p
   file <- file.path(outDir, unique(pcaDta$scenario), 'pca',
@@ -696,7 +698,7 @@ plot_empCumDist <- function(dta, outDir) {
                col = "Optimisation method",
                title = "ECDF of the optimizations results evaluations",
                subtitle = paste0(
-                 'he = ', unique(dta$he),
+                 'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen),
                  # '\nBayesian Optimization: ',
@@ -739,7 +741,7 @@ plot_boxPlot_optResEval <- function(dta, outDir) {
                 y = "Mean breeding value",
                 title = 'Comparison of the optimized breeding scheme from BO and RO',
                 subtitle = paste0('Scenario: ',
-                               'he = ', unique(dta$he),
+                               'H2 = ', unique(dta$he),
                                '; nGen = ', unique(dta$nGen),
                                '; B/gen = ', unique(dta$budget/dta$nGen),
                                '\nBO is better in ',
@@ -866,6 +868,10 @@ plot_boxPlot_optParams <- function(dta, outDir) {
   #                               '\n')
   dta <- full_join(dta, n_rep)
   dta$scenario_nrep <- reorder(dta$scenario_nrep, dta$order) # reorder factor levels
+  dta$scenario_nrep <- gsub(pattern = '(?<=[\\D])_', replacement = '=', dta$scenario_nrep, perl = TRUE)
+  dta$scenario_nrep <- gsub(pattern = '(?<=[\\d])_', replacement = '; ', dta$scenario_nrep, perl = TRUE)
+  dta$scenario_nrep <- gsub(pattern = 'he', replacement = 'H2', dta$scenario_nrep)
+  dta$scenario_nrep <- gsub(pattern = 'b', replacement = 'B/gen', dta$scenario_nrep)
 
   # use paper parameter names
   dta$pheno_p <- dta$phenoFreq
@@ -884,6 +890,7 @@ plot_boxPlot_optParams <- function(dta, outDir) {
                                  '"'),
                   x = 'Scenario',
                   col = 'Scenario')
+    p <- p + theme(legend.position = "none")
 
 
 
@@ -1001,6 +1008,9 @@ plot_PCA_optParams <- function(dta, outDir) {
   dta$iInit <- dta$iHomo
   dta$pheno_p <- dta$phenoFreq
 
+  dta$scenario <- paste0(letters[dta$order], ': ', dta$scenario, '\n')
+
+
   # PCA
   pcaDta <- dplyr::select(dta, i, iInit, bRep, pheno_p, scenario)
   pcaRes <- PCA(pcaDta,
@@ -1017,11 +1027,24 @@ plot_PCA_optParams <- function(dta, outDir) {
                 pca2 = pcaRes$ind$coord[, 2])
 
   plotDta <- dta
-  plotDta <- filter(dta, scenario %in% c('he_0.3_nGen_5_b_200',
-                                         'he_0.7_nGen_10_b_600'))
+  plotDta <- filter(dta, scenario %in% c('a: he_0.3_nGen_5_b_200\n',
+                                         'h: he_0.7_nGen_10_b_600\n'))
   plotGravity <- scenarioGravityCenter
-  plotGravity <- filter(scenarioGravityCenter, scenario %in% c('he_0.3_nGen_5_b_200',
-                                             'he_0.7_nGen_10_b_600'))
+  plotGravity <- filter(scenarioGravityCenter,
+                        scenario %in% c('a: he_0.3_nGen_5_b_200\n',
+                                        'h: he_0.7_nGen_10_b_600\n'))
+
+
+  plotDta$scenario <- gsub(pattern = '(?<=[\\D])_', replacement = '=', plotDta$scenario, perl = TRUE)
+  plotGravity$scenario <- gsub(pattern = '(?<=[\\D])_', replacement = '=', plotGravity$scenario, perl = TRUE)
+
+  plotDta$scenario <- gsub(pattern = '(?<=[\\d])_', replacement = '; ', plotDta$scenario, perl = TRUE)
+  plotGravity$scenario <- gsub(pattern = '(?<=[\\d])_', replacement = '; ', plotGravity$scenario, perl = TRUE)
+
+  plotDta$scenario <- gsub(pattern = 'he', replacement = 'H2', plotDta$scenario)
+  plotGravity$scenario <- gsub(pattern = 'he', replacement = 'H2', plotGravity$scenario)
+  plotDta$scenario <- gsub(pattern = 'b', replacement = 'B/gen', plotDta$scenario)
+  plotGravity$scenario <- gsub(pattern = 'b', replacement = 'B/gen', plotGravity$scenario)
 
   # density plot
   p <- ggplot(plotDta, aes(x = pca1,

@@ -16,23 +16,23 @@ library(RColorBrewer)
 options(stringsAsFactors = FALSE)
 options(dplyr.summarise.inform = FALSE)
 theme_set(theme_bw())
-theme_update(text = element_text(size = 20))
+theme_update(text = element_text(size = 15)) # use 20 for eps
 set.seed(2022)
 nClust = 8
 
 ggsave <- function(file, ...) {
-  file <- paste0(file, '.eps') # .svg
-  ggplot2::ggsave(filename = file, width = 29.7, height = 21, units = "cm")
+  file <- paste0(file, '.jpg') # .svg
+  ggplot2::ggsave(filename = file, width = 20, height = 15, units = "cm", dpi = 300)
 }
 
 # get functions
 source('src/resultsAnalysis/resultsAnalysisFunctions.R')
 
 #### CODE ####
-aggregatedFiles <- c('aggregatedResults/1024-15itersx1_repetitions.rds',
-                     'aggregatedResults/16x32_repetitions.rds')
+aggregatedFiles <- c('aggregatedResults/16x32_repetitions.rds',
+                     'aggregatedResults/1024-15itersx1_repetitions.rds')
 aggregatedFile <- 'aggregatedResults/16x32_repetitions.rds'
-aggregatedFile <- 'aggregatedResults/1024-15itersx1_repetitions.rds'
+# aggregatedFile <- 'aggregatedResults/1024-15itersx1_repetitions.rds'
 
 for (aggregatedFile in aggregatedFiles) {
 
