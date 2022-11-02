@@ -11,6 +11,7 @@ library(pbapply)
 library(FactoMineR)
 library(factoextra)
 library(RColorBrewer)
+library(colorspace)
 
 #### OPTIONS ####
 options(stringsAsFactors = FALSE)
@@ -31,7 +32,7 @@ source('src/resultsAnalysis/resultsAnalysisFunctions.R')
 #### CODE ####
 aggregatedFiles <- c('aggregatedResults/16x32_repetitions.rds',
                      'aggregatedResults/1024-15itersx1_repetitions.rds')
-aggregatedFile <- 'aggregatedResults/16x32_repetitions.rds'
+# aggregatedFile <- 'aggregatedResults/16x32_repetitions.rds'
 # aggregatedFile <- 'aggregatedResults/1024-15itersx1_repetitions.rds'
 
 for (aggregatedFile in aggregatedFiles) {
@@ -190,6 +191,7 @@ for (aggregatedFile in aggregatedFiles) {
   # 3. optimized parameters values ----
   cat('plot optimized parameters\n')
   invisible(plot_boxPlot_optParams(all_optResultEval_data, outDir))
+  invisible(plot_marginalDistrib_optParams(all_optResultEval_data, outDir))
   invisible(plot_PCA_optParams(all_optResultEval_data, outDir))
 
 }

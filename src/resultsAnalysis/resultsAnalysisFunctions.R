@@ -399,9 +399,9 @@ plot_optimization_progress <- function(dta, outDir) {
                y = "Mean breeding value of the final population",
                col = "Optimizaton method",
                shape = "Sampling method",
-               title = "Optimization progress",
+               # title = "Optimization progress",
                subtitle = paste0(
-                 'Scenario: ',
+                 # 'Scenario: ',
                  'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
                  '; B/gen = ', unique(dta$budget/dta$nGen)#,
@@ -513,7 +513,8 @@ plot_optimization_pca <- function(dta, outDir) {
              y = "PCA axis 2",
              col = "Optimization iteration",
              shape = "Sampling method",
-             title = "Optimization points PCA visualisation - Iteration",
+             # title = "Optimization points PCA visualisation - Iteration",
+             title = "A",
              subtitle = paste0(
                'H2 = ', unique(dtaList[[m]]$he),
                '; nGen = ', unique(dtaList[[m]]$nGen),
@@ -523,7 +524,7 @@ plot_optimization_pca <- function(dta, outDir) {
                # '; ', unique(dtaList[[m]]$opMethod)))
       + scale_color_gradientn(
         colours = rev(brewer.pal(10, "Spectral"))
-      )
+      ) + theme(plot.title = element_text(face="bold"))
     )
     # same range for x and y axes
     axisLim <- c(min(ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[1],
@@ -582,7 +583,8 @@ plot_optimization_pca <- function(dta, outDir) {
              y = "PCA axis 2",
              col = "Mean breeding value ",
              shape = "Sampling method",
-             title = "Optimization points PCA visualisation - Breeding Value",
+             # title = "Optimization points PCA visualisation - Breeding Value",
+             title = "B",
              subtitle = paste0(
                'H2 = ', unique(dtaList[[m]]$he),
                '; nGen = ', unique(dtaList[[m]]$nGen),
@@ -592,7 +594,7 @@ plot_optimization_pca <- function(dta, outDir) {
                # '; ', unique(dtaList[[m]]$opMethod)))
       + scale_color_gradientn(
         colours = rev(brewer.pal(10, "Spectral"))
-      )
+      ) + theme(plot.title = element_text(face="bold"))
     )
     # same range for x and y axes
     axisLim <- c(min(ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[1],
@@ -696,7 +698,7 @@ plot_empCumDist <- function(dta, outDir) {
         + labs(x = "Mean breeding value",
                y = "Quantile",
                col = "Optimisation method",
-               title = "ECDF of the optimizations results evaluations",
+               # title = "ECDF of the optimizations results evaluations",
                subtitle = paste0(
                  'H2 = ', unique(dta$he),
                  '; nGen = ', unique(dta$nGen),
@@ -739,7 +741,7 @@ plot_boxPlot_optResEval <- function(dta, outDir) {
 
   p <- p + labs(x = "Optimization method",
                 y = "Mean breeding value",
-                title = 'Comparison of the optimized breeding scheme from BO and RO',
+                # title = 'Comparison of the optimized breeding scheme from BO and RO',
                 subtitle = paste0('Scenario: ',
                                'H2 = ', unique(dta$he),
                                '; nGen = ', unique(dta$nGen),
@@ -837,7 +839,7 @@ plot_boxPlot_optParams <- function(dta, outDir) {
 
   dta <- dplyr::select(dta,
                        i, iHomo, bRep, phenoFreq,
-                       opMethod, scenario)
+                       opMethod, scenario, he, nGen, genB)
   dta <- distinct(dta)
   dta$opMethod <- as.factor(dta$opMethod)
   dta$scenario <- as.factor(dta$scenario)
@@ -883,6 +885,7 @@ plot_boxPlot_optParams <- function(dta, outDir) {
   dta <- filter(dta, opMethod == 'Bayesian Optimization')
 
   plotList <- lapply(c('i', 'iInit', 'bRep', 'pheno_p'), function(param){
+
     p <- ggplot(dta, aes(x = letters[as.numeric(dta$order)], y = dta[, param], col = scenario_nrep))
     p <- p + geom_boxplot()
     p <- p + labs(y = param,
@@ -978,6 +981,123 @@ plot_boxPlot_optParams <- function(dta, outDir) {
   }
 
 
+plot_marginalDistrib_optParams <- function(dta, outDir) {
+
+  dta <- dplyr::select(dta,
+                       i, iHomo, bRep, phenoFreq,
+                       opMethod, scenario, he, nGen, genB)
+  dta <- distinct(dta)
+  dta$opMethod <- as.factor(dta$opMethod)
+  dta$scenario <- as.factor(dta$scenario)
+
+  # order scenarios
+  dta$order <- NA
+  dta[dta$scenario == 'he_0.3_nGen_5_b_200', 'order'] <- 1
+  dta[dta$scenario == 'he_0.3_nGen_5_b_600', 'order'] <- 2
+  dta[dta$scenario == 'he_0.3_nGen_10_b_200', 'order'] <- 3
+  dta[dta$scenario == 'he_0.3_nGen_10_b_600', 'order'] <- 4
+  dta[dta$scenario == 'he_0.7_nGen_5_b_200', 'order'] <- 5
+  dta[dta$scenario == 'he_0.7_nGen_5_b_600', 'order'] <- 6
+  dta[dta$scenario == 'he_0.7_nGen_10_b_200', 'order'] <- 7
+  dta[dta$scenario == 'he_0.7_nGen_10_b_600', 'order'] <- 8
+  dta$scenario <- reorder(dta$scenario, dta$order) # reorder factor levels
+
+  # add number of observation
+  n_rep <- dta %>%
+    group_by(scenario, opMethod, order) %>%
+    summarise(nRep = n()) %>%
+    spread(key = opMethod, value = nRep)
+  n_rep$scenario_nrep <- paste0(letters[n_rep$order], ': ', n_rep$scenario, '\nnObs: ',
+                                n_rep$`Bayesian Optimization`,
+                                '\n')
+  # n_rep$scenario_nrep <- paste0(n_rep$order, ': ', n_rep$scenario, '\nnObs, ',
+  #                               paste('BO:', n_rep$`Bayesian Optimization`,
+  #                                     'RO:', n_rep$`Random Optimization`),
+  #                               '\n')
+  dta <- full_join(dta, n_rep)
+  dta$scenario_nrep <- reorder(dta$scenario_nrep, dta$order) # reorder factor levels
+  dta$scenario_nrep <- gsub(pattern = '(?<=[\\D])_', replacement = '=', dta$scenario_nrep, perl = TRUE)
+  dta$scenario_nrep <- gsub(pattern = '(?<=[\\d])_', replacement = '; ', dta$scenario_nrep, perl = TRUE)
+  dta$scenario_nrep <- gsub(pattern = 'he', replacement = 'H2', dta$scenario_nrep)
+  dta$scenario_nrep <- gsub(pattern = 'b', replacement = 'B/gen', dta$scenario_nrep)
+
+  # use paper parameter names
+  dta$pheno_p <- dta$phenoFreq
+  dta$iInit <- dta$iHomo
+  dta$order <- as.character(dta$or)
+
+
+  # remove random opt
+  dta <- filter(dta, opMethod == 'Bayesian Optimization')
+
+  titleLabel <- list(i = 'A', iInit = 'B', bRep = 'C')
+  plotList <- lapply(c('i', 'iInit', 'bRep'), function(param){
+
+    if (param == 'i') {
+      dtaPlot <- dta[!dta$order %in% c(2,6),]
+    } else {
+      dtaPlot <- dta
+    }
+
+    p <- ggplot(dtaPlot,
+           aes(x = dtaPlot[, param],
+               colour = as.character(nGen),
+               linetype = as.character(he),
+               size =  as.character(genB))) +
+      stat_density(geom="line", position="identity", alpha = 0.8) +
+      scale_color_manual(name = "n Gen",
+                         values = c('10' = "#F8766D", '5' = "#00BFC4"),
+                         labels = c('10', '5')) +
+      scale_size_manual(name = "B/gen",
+                        values = c('200' = 0.5, '600' = 1.5),
+                        labels = c('200', '600')) +
+      scale_linetype_manual(name = "H2",
+                            values = c('0.3' = 1, '0.7' = 2)) +
+      labs(x = param,
+           title = titleLabel[[param]]) +
+      theme(plot.title = element_text(face="bold"))
+    if (param == 'i') {
+      p <- p + ylim(-0.1, 10)
+    }
+    p
+
+
+    # save plot
+    file <- file.path(outDir, 'optimizedParams',
+                      paste0('optParam_marginalDistrib_', param))
+    suppressWarnings(dir.create(dirname(file), recursive = TRUE))
+    ggsave(file, p)
+    p
+  })
+
+
+    colorsPalette <- expand.grid(l = c(1, .4),
+                                 h = c(213, 33),
+                                 s = c(1, .4)
+    )
+    colorsPalette <- colorspace::HSV(H = colorsPalette$h,
+                                     S = colorsPalette$s,
+                                     V = colorsPalette$l)
+    colorsPalette <- colorspace::hex(colorsPalette)
+    p <- ggplot(dta, aes(x = pheno_p, fill = letters[as.numeric(order)])) +
+      geom_bar(aes(y = (..count..)/sum(..count..)), position = "dodge") +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
+      scale_fill_manual(values = colorsPalette) +
+      labs(y = 'Percent of total',
+           fill = 'Scenario',
+           title = 'D') +
+      theme(plot.title = element_text(face="bold"))
+
+
+    # save plot
+    file <- file.path(outDir, 'optimizedParams',
+                      'optParam_marginalDistrib_pheno_p')
+    suppressWarnings(dir.create(dirname(file), recursive = TRUE))
+    ggsave(file, p)
+
+    plotList[[length(plotList) + 1]] <- p
+    plotList
+}
 
 
 
@@ -1074,9 +1194,9 @@ plot_PCA_optParams <- function(dta, outDir) {
              hjust = 'outward',
              vjust = 'outward')
 
-  p <- p + labs(title = paste0("Optimized parameters's PCA visualisation"),
-                subtitle = "Points correspond to the center of gravity of each scenario."
-                )
+  # p <- p + labs(title = paste0("Optimized parameters's PCA visualisation"),
+  #               subtitle = "Points correspond to the center of gravity of each scenario."
+  #               )
 
   # same range for x and y axes
   axisLim <- c(min(ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[1],
