@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Diot
+    given-names: Julien
+    orcid: https://orcid.org/0000-0002-8738-2034
+  - family-names: Iwata
+    given-names: Hiroyoshi
+    orcid: https://orcid.org/0000-0002-6747-7036
+title: "Bayesian optimisation for breeding, code repository"
+date-released: 2022-09-21
+repository-code: "https://github.com/ut-biomet/bayesianOptimizationForBreeding"
