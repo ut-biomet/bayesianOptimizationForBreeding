@@ -47,8 +47,9 @@ We also specify the locations of the main folders in which we will save the outp
 ```{r}
 load_dot_env()
 nCPU <- detectCores()
-# nRepOpt <- 1 # number of optimization repetitions
-nRepOpt <- 1024 # number of optimization repetitions
+# nCPU <- 2
+nRepOpt <- 1 # number of optimization repetitions
+# nRepOpt <- 1024 # number of optimization repetitions
 repRes_nRep <- 1 # number of opt result evaluations
 repRes_nCpus <- 2 # number of core to use for opt result evaluations
 
@@ -71,7 +72,7 @@ for (dir in c(simSetupFolder,
               optSetupFolder,
               optResultFolder,
               repResultFolder)) {
-  dir.create(dir)
+  dir.create(dir,recursive = TRUE)
   }
 ```
 
@@ -158,8 +159,9 @@ Setups with all of these combination will be created.
 
 ```{r varSetup-3}
 varSetupParams <- list(
-  nGen = c(5, 10),
-  plotBudjetPerGen = c(200, 600),
+  # nGen = c(5, 10),
+  nGen = c(5),
+  plotBudjetPerGen = c(200),#, 600),
   # he = c(0.7, 0.3)
   he = c(0.3)
 )
@@ -218,9 +220,9 @@ optP <- list(
   acquFunction = makeMBOInfillCritEI(),
   filter.proposed.points = TRUE, # should bayesian opt avoid sampling parameters too close to each-other
   filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
-  propose.points = 2, # number of points evaluated at each iteration
-  nCpusProposePoints = 2, # number of core to use for evaluating the points at each iteration
-  totalIter = 15, # total number of iteration
+  propose.points = 3, # number of points evaluated at each iteration
+  nCpusProposePoints = 3, # number of core to use for evaluating the points at each iteration
+  totalIter = 10, # total number of iteration
   # time.budget = 60*30, # total time available for the optimization
   initTrainSize = 5, # initial training data size
   funEval = 1, # see below
@@ -402,7 +404,7 @@ invisible(mcmapply(
     
     # send notification about the progress
     nResFile <- length(list.files(repResultFolder))
-    if (nResFile %in% 2*floor(quantile(seq(length(simSetupList)*2))/2)) {
+    if (nResFile %in% (2*floor(quantile(seq(length(simSetupList)*2))/2))) {
       progress <- nResFile / (length(simSetupList) * 2)
       msg <- paste0('Optimization in progress...\n',
                     progress * 100, "% ", 'in ',
