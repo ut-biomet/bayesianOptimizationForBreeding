@@ -36,6 +36,7 @@ breedSimOpt <- function(i,
                         initPop,
                         plotCost,
                         newIndCost,
+                        NewIndSlope = 0, #NewIndSlope = r
                         trait,
                         phenotyper,
                         createModel,
@@ -54,6 +55,7 @@ breedSimOpt <- function(i,
   }
 
   # get simulation parameters
+    # browser()
     newParams <- list(i = i,
                       iHomo = iHomo,
                       bRep = bRep,
@@ -62,7 +64,8 @@ breedSimOpt <- function(i,
                       nGen = nGen,
                       nIndIni = initPop$nInd,
                       plotCost = plotCost,
-                      newIndCost = newIndCost)
+                      newIndCost = newIndCost,
+                      NewIndSlope = NewIndSlope)
     params <- do.call(getSimulParams, newParams)
 
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
@@ -199,6 +202,7 @@ simuleBreeding <- function(nPheno,
 #' @param nIndIni
 #' @param plotCost
 #' @param newIndCost
+#' @param NewIndSlope slope parameter for
 #'
 #' @return list of four elements: `nPheno`, `nSelected`, `nNew` (see documentation of `simuleBreeding` function), `eff.i`, `eff.budget` the effective budgets used for the breeding campaign.
 getSimulParams <- function(i,
@@ -209,8 +213,8 @@ getSimulParams <- function(i,
                            nGen,
                            nIndIni,
                            plotCost = 1,
-                           newIndCost = 1.07){
-
+                           newIndCost = 1.07,
+                           NewIndSlope = 0){ #NewIndSlope = r
   # initialisation
   nSelected <- rep(0, nGen)
   nNew <- rep(0, nGen)
@@ -235,13 +239,13 @@ getSimulParams <- function(i,
   nPhenoTot <- x["nPheno"]
 
   # 2 - calc number of new individuals for each generation
-  nNew <- calcNnew(r = 0,
+  nNew <- calcNnew(r = NewIndSlope,
                    nTot = indTot,
                    nGen = nGen,
                    gen1 = nNew[1])
 
   # 3 - calc number of selected individuals for each generation
-  nSel <- pmax(round(nNew[1:nGen-1] * i), 1)
+  nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
   nSelected[2:nGen] <- nSel
 
   # 3 - calc number of phenotyping per generation
