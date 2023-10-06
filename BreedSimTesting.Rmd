@@ -1,0 +1,332 @@
+---
+title: "Breed Simulation Testing"
+output: pdf_document
+date: '2023-10-02'
+---
+
+```{r setup, include=FALSE}
+knitStartTime <- Sys.time()
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Import packages
+suppressPackageStartupMessages({
+  library(gaston)
+  library(TSP)
+  library(breedSimulatR)
+  library(digest)
+  library(glmnet)
+  library(mlrMBO)
+  library(parallelMap)
+  library(parallel)
+  library(lhs)
+  library(dotenv)
+})
+source("src/optimization.R")
+source("src/setupSimulation.R")
+selMate_env <- new.env(parent = globalenv())
+source('src/selectMatFun.R', local = selMate_env)
+genoPred_env <- new.env(parent = globalenv())
+source('src/genoPred.R', local = genoPred_env)
+sim_env <- new.env(parent = globalenv())
+source('src/simulation.R')#, local = sim_env)
+
+```
+
+```{r}
+load_dot_env()
+nCPU <- detectCores()
+# nCPU <- 2
+nRepOpt <- 1 # number of optimization repetitions
+# nRepOpt <- 1024 # number of optimization repetitions
+repRes_nRep <- 1 # number of opt result evaluations
+repRes_nCpus <- 2 # number of core to use for opt result evaluations
+
+simSetupFolder <- "simSetups"
+optSetupFolder <- "optSetups"
+optResultFolder <- "output-optimization"
+repResultFolder <- "output-resultRepetition"
+
+###
+date <- format(knitStartTime, "%Y-%m-%d_%H-%M-%S")
+simSetupFolder <- paste0(simSetupFolder, "/", date)
+optSetupFolder <- paste0(optSetupFolder, "/", date)
+optResultFolder <- paste0(optResultFolder, "/", date)
+repResultFolder <- paste0(repResultFolder, "/", date)
+
+for (dir in c(simSetupFolder,
+              optSetupFolder,
+              optResultFolder,
+              repResultFolder)) {
+  dir.create(dir,recursive = TRUE)
+}
+
+###
+varSetupParams <- list(
+  # nGen = c(5, 10),
+  nGen = c(5),
+  plotBudjetPerGen = c(200),#, 600),
+  # he = c(0.7, 0.3)
+  he = c(0.3)
+)
+
+###
+nCpus = 2
+setup = setupSimulation(dataFile = 'data/fullData.vcf',
+                        lchrCm = 100,
+                        nQTN = 1000,
+                        nGen = 10,
+                        nSNP = 3000,
+                        mu = 0,
+                        he = 0.5,
+                        ve = NULL,
+                        totalBudget = 1000,
+                        plotCost = 1,
+                        newIndCost = 1,
+                        selectMateInds = selMate_env$selectMate,
+                        createModel = genoPred_env$createModel,
+                        breedSimOpt = sim_env$breedSimOpt,
+                        aggrFun = mean,
+                        aggrFunName = 'mean',
+                        specName = "bayesOpt",
+                        popName = "initialPop",
+                        traitName = "trait1",
+                        seed = 2021,
+                        verbose = TRUE
+)
+# Constraints / FixedParameters
+
+fixedParams <- setup$fixedParams
+
+###
+setupDir <- simSetupFolder
+setupsFiles <- list.files(setupDir, full.names = TRUE)
+simList <- lapply(setupsFiles, readRDS)
+```
+
+
+```{r}
+# test parameters
+i = 0.5
+iHomo = 0.5
+bRep = 0.7
+phenoFreq = 5
+seed = 27012001
+nRep = 1
+x = c(i, iHomo, bRep, phenoFreq, seed)
+
+
+# create all combination of simSetup and optSetup
+simSetupList <- vector(mode = 'list', length = length(simList) )
+i <- 1
+for (s in seq_along(simList)) {
+  simSetupList[[i]] <- simList[[s]]
+  i <- i + 1
+}
+
+input_list = list(i = x[1],
+                  iHomo = x[2],
+                  bRep = x[3],
+                  phenoFreq = x[4],
+                  seed = x[5],
+                  budget = fixedParams$budget,
+                  nGen = fixedParams$nGen,
+                  initPop = fixedParams$initPop, # a remplir
+                  plotCost = fixedParams$plotCost,
+                  newIndCost = fixedParams$newIndCost,
+                  trait = fixedParams$trait,
+                  phenotyper = fixedParams$phenotyper, # a remplir
+                  createModel = fixedParams$createModel,
+                  selectMateInds = fixedParams$selectMateInds,
+                  aggrFun = fixedParams$aggrFun,
+                  aggrFunName = fixedParams$aggrFunName,
+                  verbose = TRUE)
+
+```
+
+```{r}
+
+res <- breedSimOpt(i = x[1],
+                   iHomo = x[2],
+                   bRep = x[3],
+                   phenoFreq = x[4],
+                   seed = x[5],
+                   budget = fixedParams$budget,
+                   nGen = fixedParams$nGen,
+                   initPop = fixedParams$initPop,
+                   plotCost = fixedParams$plotCost,
+                   newIndCost = fixedParams$newIndCost,
+                   NewIndSlope = -0.5, #NewIndSlope = r
+                   trait = fixedParams$trait,
+                   phenotyper = fixedParams$phenotyper, 
+                   createModel = fixedParams$createModel,
+                   selectMateInds = fixedParams$selectMateInds,
+                   aggrFun = fixedParams$aggrFun,
+                   aggrFunName = fixedParams$aggrFunName,
+                   verbose = TRUE)
+
+```
+
+### Evaluation of Budget and Selection intensity efficacity with changing parameters
+```{r}
+#Evaluation function
+Test_Breeding_camp <- function(i,
+                        iHomo,
+                        bRep,
+                        phenoFreq,
+                        seed = NA,
+                        budget,
+                        nGen,
+                        initPop,
+                        plotCost,
+                        newIndCost,
+                        NewIndSlope = 0, #NewIndSlope
+                        trait,
+                        phenotyper,
+                        createModel,
+                        selectMateInds,
+                        aggrFun,
+                        aggrFunName,
+                        verbose){
+  if (!is.na(seed)) {
+      set.seed(seed)
+    }
+  newParams <- list(i = i,
+                      iHomo = iHomo,
+                      bRep = bRep,
+                      phenoFreq = phenoFreq,
+                      budget = budget,
+                      nGen = nGen,
+                      nIndIni = initPop$nInd,
+                      plotCost = plotCost,
+                      newIndCost = newIndCost,
+                      NewIndSlope = NewIndSlope)
+  
+    params <- do.call(getSimulParams, newParams)
+    
+    return(list(
+      Budg.Eff = mean(params$eff.budget)/budget,
+      i.Eff = mean(params$eff.i)/i,
+      nNew = params$nNew,
+      nSelected = params$nSelected
+    ))
+}
+
+```
+#
+```{r}
+nGen = 15
+i = 0.5
+bRep = 0.3
+NewIndSlope = -0.5
+res_camp = lapply(0.2*(1:13) - 1.4, function(NewIndSlope){
+  Test_Breeding_camp(i = i, # for different values of i
+                   iHomo = x[2],
+                   bRep = bRep, # for different values of bRep
+                   phenoFreq = x[4],
+                   seed = x[5],
+                   budget = fixedParams$budget,
+                   nGen = nGen,#fixedParams$nGen,
+                   initPop = fixedParams$initPop,
+                   plotCost = fixedParams$plotCost,
+                   newIndCost = fixedParams$newIndCost,
+                   NewIndSlope = NewIndSlope,  #NewIndSlope
+                   trait = fixedParams$trait,
+                   phenotyper = fixedParams$phenotyper, 
+                   createModel = fixedParams$createModel,
+                   selectMateInds = fixedParams$selectMateInds,
+                   aggrFun = fixedParams$aggrFun,
+                   aggrFunName = fixedParams$aggrFunName,
+                   verbose = TRUE)
+  })
+res_nNew = lapply(res_camp, function(x) x$nNew)
+# plot(res_nNew[2:10])
+
+colList = unlist(lapply(1:13,function(k) any(res_nNew[[k]][2:nGen] <= 0)))
+colList = ifelse(colList,"red","green")
+plot(res_nNew[[1]][2:10], xlim = c(1,nGen),ylim = c(0,50), type = "l", col = colList[1])
+for (k in 2:13) { 
+  lines(res_nNew[[k]][2:nGen], col=colList[k])
+}
+# NewIndSlope needs to be bounded between -1 and 1
+
+# res_camp$nNew
+# res_camp$nSelected
+# plot(res_camp$nNew[2:10], type = "l")
+```
+
+
+
+
+```{r}
+
+for (i in seq(1000)) {
+  ntot = floor(runif(1, 50, 150))
+  ngen = floor(runif(1, 3, 20))
+  r = runif(1, -1,1)
+  x <-calcNnew(ntot, ngen, r = r)
+}
+
+
+clacNnew2 <- 
+plotDta <- data.frame(x = seq(-1, 1, length.out = 200)) %>%
+	dplyr::mutate(y1 = calcNnew2(nGen = 15, nTot = 100, r = x), y2 = dnorm(x, 1, 0.5))
+	plot_ly(
+		type = "scatter",
+		mode = "lines",
+		data = plotDta,
+		x = ~ x,
+		y = ~ y1,
+		name = "y1"
+	) %>%
+	add_lines(y = ~ y2, name = "y2", ) %>%
+	layout(hovermode = 'compare')
+```
+
+
+
+
+# Test with different values of bRep and i
+```{r}
+list_i = 0.1*(1:10)
+list_bRep = 0.1*(1:9)
+cross_list_i_bRep = expand.grid(list_i, list_bRep)
+colnames(cross_list_i_bRep)= c("i","bRep")
+res_eff = lapply(1:nrow(cross_list_i_bRep), function(k){
+  Test_Breeding_camp(i = cross_list_i_bRep$i[k], # for different values of i
+                   iHomo = x[2],
+                   bRep = cross_list_i_bRep$bRep[k], # for different values of bRep
+                   phenoFreq = x[4],
+                   seed = x[5],
+                   budget = fixedParams$budget,
+                   nGen = fixedParams$nGen,
+                   initPop = fixedParams$initPop,
+                   plotCost = fixedParams$plotCost,
+                   newIndCost = fixedParams$newIndCost,
+                   trait = fixedParams$trait,
+                   phenotyper = fixedParams$phenotyper, 
+                   createModel = fixedParams$createModel,
+                   selectMateInds = fixedParams$selectMateInds,
+                   aggrFun = fixedParams$aggrFun,
+                   aggrFunName = fixedParams$aggrFunName,
+                   verbose = TRUE)
+})
+res_eff = data.frame(
+  Budg.Eff = unlist(lapply(1:length(res_eff),function(k) res_eff[[k]]$Budg.Eff)),
+  i.Eff = unlist(lapply(1:length(res_eff),function(k) res_eff[[k]]$i.Eff))
+)
+res_eff = cbind(cross_list_i_bRep,res_eff)
+#create heatmap
+library(ggplot2)
+
+ggplot(res_eff, aes(i, bRep, fill = i.Eff)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Heatmap of i.Eff for Different Values of i and bRep",
+       x = "i", y = "bRep", fill = "i.Eff") +
+  theme_minimal()
+
+```
+
+
