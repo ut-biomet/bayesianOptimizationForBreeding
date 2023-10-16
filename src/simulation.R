@@ -406,3 +406,71 @@ calcNpheno <- function(phenoFreq,
 
   nPheno
 }
+
+
+# function slope_i
+#' @param i0 initial value of i (generation 1)
+#' @param s slope parameter for mode 1 and 2 /!\ the definition changes between modes
+#' @param nGen number of generation
+#' @param mode 1,2 (or 3) are equivalent to different shape of i across generations
+#' @param i0_Bounds bounds for the values of i0 and i
+#' @param s_Bounds bounds for the values of s
+#'
+#' @return list of the values of i for all generations
+slope_i <- function(
+    i0,
+    s = 0,
+    nGen,
+    mode = 1,
+    i0_Bounds = c(0,1),
+    s_Bounds = c(-1,1)){
+   #check bounds
+  if (i0_Bounds[1] > i0 | i0 > i0_Bounds[2])
+    {
+    errorCondition(paste0("i0 Not in bounds [",i0_Bounds,"]"))
+  }
+  if (s_Bounds[1] > s | s > s_Bounds[2])
+    {
+    errorCondition(paste0("s Not in bounds [",s_Bounds,"]"))
+  }
+
+  # Modes
+  if (mode == 1) # slope bounded in
+    {
+    slope = (s < 0) * s*(i0)/nGen + (s >= 0) * s*(1 - i0)/nGen
+    list_i = slope * (1:nGen) + i0
+  }
+  else if (mode == 2)  # slope bounded in
+  {
+    slope = s*pmin(i0,1 - i0)/nGen
+    # slope = (s < 0) * s*(i0)/nGen + (s >= 0) * s*(1 - i0)/nGen
+    list_i = slope * (1:nGen) + i0
+  }
+  else if (mode == 3)# slope unbounded / i bounded
+    {
+    slope = tan(s*pi/2)
+    print(slope)
+    list_i = slope * (1:nGen) + i0
+    # put values in bounds [0;1]
+    list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
+  }
+  else if (mode == 4) # slope unbounded / i middle value
+    {
+    slope = tan(s*pi/2)
+    # print(slope)
+    list_i = slope * ((1:nGen)-floor(nGen/2)) + i0
+    # put values in bounds [i0_Bounds]
+    list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
+  }
+  else if (mode == 5) # Beta law
+    {
+    #functions turn the values of i0 and s into values btw 0 and +inf
+    list_i = dbeta((1:nGen)/nGen, shape1 =  1/(1-i0)-1, shape2 = 2/(1-s)-1)
+    list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
+  }
+  else{
+    errorCondition("Not defined yet")
+  }
+  # print(list_i)
+  list_i
+}
