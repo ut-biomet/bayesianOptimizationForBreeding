@@ -115,20 +115,23 @@ i = 0.5
 iHomo = 0.5
 bRep = 0.7
 phenoFreq = 5
+NewIndSlope = -0.5
+SelIntSlope = -0.5
 seed = 27012001
 nRep = 1
-x = c(i, iHomo, bRep, phenoFreq, seed)
+x = c(i, iHomo, bRep, phenoFreq, seed, NewIndSlope, SelIntSlope)
 
 
-# create all combination of simSetup and optSetup
-simSetupList <- vector(mode = 'list', length = length(simList) )
-i <- 1
-for (s in seq_along(simList)) {
-  simSetupList[[i]] <- simList[[s]]
-  i <- i + 1
-}
+# # create all combination of simSetup and optSetup
+# simSetupList <- vector(mode = 'list', length = length(simList) )
+# i <- 1
+# for (s in seq_along(simList)) {
+#   simSetupList[[i]] <- simList[[s]]
+#   i <- i + 1
+# }
 
 input_list = list(i = x[1],
+                  # SelIntSlope = x[7],
                   iHomo = x[2],
                   bRep = x[3],
                   phenoFreq = x[4],
@@ -138,6 +141,7 @@ input_list = list(i = x[1],
                   initPop = fixedParams$initPop, # a remplir
                   plotCost = fixedParams$plotCost,
                   newIndCost = fixedParams$newIndCost,
+                  # NewIndSlope = x[6], #NewIndSlope = r
                   trait = fixedParams$trait,
                   phenotyper = fixedParams$phenotyper, # a remplir
                   createModel = fixedParams$createModel,
@@ -146,11 +150,30 @@ input_list = list(i = x[1],
                   aggrFunName = fixedParams$aggrFunName,
                   verbose = TRUE)
 
+
+
+
+
+
+for (k in 1:50) {
+  NewIndSlope = runif(n = 1, min = 0, max = 1)
+  SelIntSlope = runif(n = 1, min = -1, max = 1)
+  cat(paste("\r\n",k,"\r\n NewIndSlope : ", round(NewIndSlope,3), 
+            "\r\n SelIntSlope : ",round(SelIntSlope, 3),"\r\n"))
+  res = do.call(breedSimOpt, args = c(input_list,
+                                      NewIndSlope = NewIndSlope,
+                                      SelIntSlope = SelIntSlope
+                                      ))
+  # cat(k)
+  if (is.na(res)) browser()
+}
+
 ```
 
 ```{r}
 
 res <- breedSimOpt(i = x[1],
+                   SelIntSlope = x[7],#SelIntSlope = s
                    iHomo = x[2],
                    bRep = x[3],
                    phenoFreq = x[4],
@@ -160,7 +183,7 @@ res <- breedSimOpt(i = x[1],
                    initPop = fixedParams$initPop,
                    plotCost = fixedParams$plotCost,
                    newIndCost = fixedParams$newIndCost,
-                   NewIndSlope = -0.5, #NewIndSlope = r
+                   NewIndSlope = x[6], #NewIndSlope = r
                    trait = fixedParams$trait,
                    phenotyper = fixedParams$phenotyper, 
                    createModel = fixedParams$createModel,
@@ -168,13 +191,15 @@ res <- breedSimOpt(i = x[1],
                    aggrFun = fixedParams$aggrFun,
                    aggrFunName = fixedParams$aggrFunName,
                    verbose = TRUE)
-
 ```
+
+
 
 ### Evaluation of Budget and Selection intensity efficacity with changing parameters
 ```{r}
 #Evaluation function
 Test_Breeding_camp <- function(i,
+                        SelIntSlope = 0,
                         iHomo,
                         bRep,
                         phenoFreq,
@@ -204,7 +229,8 @@ Test_Breeding_camp <- function(i,
                       nIndIni = initPop$nInd,
                       plotCost = plotCost,
                       newIndCost = newIndCost,
-                      NewIndSlope = NewIndSlope)
+                      NewIndSlope = NewIndSlope,
+                      SelIntSlope = SelIntSlope)
   
     params <- do.call(getSimulParams, newParams)
     
@@ -261,7 +287,7 @@ for (k in 2:13) {
 
 
 
-# Test for different vqlues of r
+# Test for different values of r
 ```{r}
 x = c()
 for (i in seq(1000)) {
@@ -334,50 +360,69 @@ ggplot(res_eff, aes(i, bRep, fill = i.Eff)) +
 
 
 ### Test on values of i
+
+graphes of nNew with different values of r
 ```{r}
-i0 <- 0.75
-nGen <- 10
-colorPalette <- rainbow(25)
+library(rlang)
+library(plotly)
+nGen = 10
+nTot = 100
 
-s_values <- seq(-1,1,0.1)
-# mode 1 (bounded slope)
+# Define a sequence of x values
+x <- seq(1,nGen)
+r_values = seq(-1,1,0.25)
+# result data.frame
+res_df = data.frame(x = x,
+                    matrix(nrow = length(x), ncol = length(r_values)))
 
-for (i0 in seq(0,1,0.1)){
-  plot(c(1),c(nGen),xlim = c(0,nGen), ylim = c(-0.01,1.01))
-  
-  # rownames(i1_values_df) <- paste0("s_", s_values)
-  for (k in 1:length(s_values)){
-    i1_values_df[k,]  =  slope_i(i0 = i0, s = s_values[k], nGen = nGen, mode = 1)
-    lines(1:nGen, i1_values_df[k,], col = colorPalette[k])
-  }
+
+#legend names + associated hash value
+legend_names = unlist(lapply(1:length(r_values), 
+                    FUN = function(line_param) paste0('r = ',r_values[line_param])))
+param_names = unlist(lapply(legend_names, function(u) paste0('hash',hash(u))))
+colnames(res_df) = c('x',param_names)
+names(legend_names) = param_names
+
+for (line_param in 1:length(r_values)){
+  y = (nTot / nGen) * (1 - r_values[line_param] + ((2 * r_values[line_param] * (x - 1)) / (nGen - 1)))
+  # print(length(y))
+  res_df[param_names[line_param]] = y 
 }
-```
+
+# Create figure
+colorPalette <- unlist(lapply('red', function(baseColor) colorRampPalette(c(baseColor, "white"))(length(r_values)+1)[1:length(r_values)]))
 
 
-```{r}
-i0 <- 0.75
-nGen <- 10
-# mode 2 (unbounded slope)
-# for (i0 in seq(0,1,0.1)){
-    plot(c(1),c(nGen),xlim = c(0,nGen), ylim = c(-0.01,1.01))
-    i2_values_df <- data.frame(matrix(ncol = nGen, nrow = length(s_values)))
-  for (k in 1:length(s_values)){
-    i2_values_df[k,]  =  slope_i(i0 = i0, s = s_values[k], nGen = nGen, mode = 2)
-    lines(1:nGen, i2_values_df[k,], col = colorPalette[k])
-  }
-# }
-    
-    plot(c(1),c(nGen),xlim = c(0,nGen), ylim = c(-0.01,1.01))
-    i3_values_df <- data.frame(matrix(ncol = nGen, nrow = length(s_values)))
-  for (k in 1:length(s_values)){
-    i3_values_df[k,]  =  slope_i(i0 = i0, s = s_values[k], nGen = nGen, mode = 3)
-    lines(1:nGen, i3_values_df[k,], col = colorPalette[k])
-  }
+
+
+names(colorPalette) = param_names
+fig <- plot_ly(data = res_df, 
+               x = ~x, 
+               y = as.formula(paste0('~', param_names[1])),
+               name = legend_names[param_names[1]], 
+               type = 'scatter', mode = 'lines+markers', 
+               marker = list(color = colorPalette[param_names[1]]),
+               line = list(color = colorPalette[param_names[1]])) %>% 
+  plotly::layout(title = "",
+         xaxis = list(title = "Generation"),
+         yaxis = list (title = "nNew"))
+
+for (name in param_names[-1]) {
+  print(as.formula(paste0('~', name)))
+  fig = fig %>% add_trace(data = res_df, x = x, y = as.formula(paste0('~', name)),
+                          marker = list(color = colorPalette[name]),
+                          line = list(color = colorPalette[name]),
+                          name=legend_names[name])
+}
+
+fig
 ```
 
 #Beta law
 
 ```{r}
+library(rlang)
+library(plotly)
 nGen = 10
 # Define a sequence of x values
 x <- seq(1,nGen)
@@ -396,7 +441,10 @@ res_df = data.frame(x = x,
 
 #legend names + associated hash value
 legend_names = unlist(lapply(1:nrow(param_df), 
-                    FUN = function(line_param) paste0('s',param_df$s[line_param],'i0',param_df$i0[line_param],collapse='')))
+                    FUN = function(line_param) paste0('s = ',
+                                                      param_df$s[line_param],
+                                                      ' ; i0 = ',param_df$i0[line_param],
+                                                      collapse='')))
 
 param_names = unlist(lapply(legend_names, function(u) paste0('hash',hash(u))))
 colnames(res_df) = c('x',param_names)
@@ -415,7 +463,8 @@ for (line_param in 1:nrow(param_df)){
 }
 
 # Create figure
-colorPalette <- unlist(lapply(rainbow(n = length(i0_values),), function(baseColor) colorRampPalette(c(baseColor, "white"))(length(s_values)+1)[1:length(s_values)]))
+MainColorlist = c('red', 'blue', 'green')
+colorPalette <- unlist(lapply( MainColorlist[1:length(i0_values)], function(baseColor) colorRampPalette(c(baseColor, "white"))(length(s_values)+1)[1:length(s_values)]))
 
 
 
@@ -425,13 +474,19 @@ fig <- plot_ly(data = res_df,
                x = ~x, 
                y = as.formula(paste0('~', param_names[1])),
                name = legend_names[param_names[1]], 
-               type = 'scatter', mode = 'lines', 
-               line = list(color = colorPalette[param_names[1]])) 
+               type = 'scatter', mode = 'lines+markers',
+               marker = list(color = colorPalette[param_names[1]]),
+               line = list(color = colorPalette[param_names[1]])) %>% 
+  plotly::layout(title = "",
+                 xaxis = list(title = "Generation"),
+                 yaxis = list (title = "Selection intensity (i)"))
 
 for (name in param_names[-1]) {
   print(as.formula(paste0('~', name)))
   fig = fig %>% add_trace(data = res_df, x = x, y = as.formula(paste0('~', name)),
-                          line = list(color = colorPalette[name]),name=legend_names[name])
+                          marker = list(color = colorPalette[name]),
+                          line = list(color = colorPalette[name]),
+                          name=legend_names[name])
 }
 
 fig
