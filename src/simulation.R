@@ -9,6 +9,7 @@
 #' Breeding simulation function parametrized with the optimized parameters
 #'
 #' @param i
+#' @param SelIntSlope
 #' @param iHomo
 #' @param bRep
 #' @param phenoFreq
@@ -17,6 +18,7 @@
 #' @param initPop
 #' @param plotCost
 #' @param newIndCost
+#' @param NewIndSlope
 #' @param trait
 #' @param phenotyper
 #' @param createModel
@@ -27,6 +29,7 @@
 #'
 #' @return aggregated results of the breeding simulation
 breedSimOpt <- function(i,
+                        SelIntSlope = 0, #SelIntSlope = s
                         iHomo,
                         bRep,
                         phenoFreq,
@@ -55,7 +58,6 @@ breedSimOpt <- function(i,
   }
 
   # get simulation parameters
-    # browser()
     newParams <- list(i = i,
                       iHomo = iHomo,
                       bRep = bRep,
@@ -65,9 +67,10 @@ breedSimOpt <- function(i,
                       nIndIni = initPop$nInd,
                       plotCost = plotCost,
                       newIndCost = newIndCost,
-                      NewIndSlope = NewIndSlope)
+                      NewIndSlope = NewIndSlope,
+                      SelIntSlope = SelIntSlope)
     params <- do.call(getSimulParams, newParams)
-
+    # browser()
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
                                nSelected = params$nSelected,
                                nNew = params$nNew,
@@ -209,12 +212,13 @@ getSimulParams <- function(i,
                            iHomo,
                            bRep,
                            phenoFreq,
+                           NewIndSlope = 0, #NewIndSlope = r : Shape parameter for New Individuals repartition
+                           SelIntSlope = 0, #SelIntSlope = s : Shape parameter for Selection intensity
                            budget,
                            nGen,
                            nIndIni,
                            plotCost = 1,
-                           newIndCost = 1.07,
-                           NewIndSlope = 0){ #NewIndSlope = r
+                           newIndCost = 1.07){
   # initialisation
   nSelected <- rep(0, nGen)
   nNew <- rep(0, nGen)
@@ -245,7 +249,12 @@ getSimulParams <- function(i,
                    gen1 = nNew[1])
 
   # 3 - calc number of selected individuals for each generation
-  nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
+  # nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
+  nSel <- pmax(round(nNew[1:nGen-1] * slope_i(i0 = i, s = SelIntSlope,
+                                              nGen = nGen - 1, mode = 5,
+                                              i0_Bounds = c(0,1), s_Bounds = c(-1,1)) #careful if the bounds changes
+                     ), 1)
+
   nSelected[2:nGen] <- nSel
 
   # 3 - calc number of phenotyping per generation
@@ -408,7 +417,9 @@ calcNpheno <- function(phenoFreq,
 }
 
 
-# function slope_i
+#' Create a vector of the values of i (selection intensity)
+#' for all generation following to a specific function
+#'
 #' @param i0 initial value of i (generation 1)
 #' @param s slope parameter for mode 1 and 2 /!\ the definition changes between modes
 #' @param nGen number of generation
