@@ -63,16 +63,14 @@ bayesianOptimization <- function(
   if (!is.null(mainSeed)) {
     set.seed(mainSeed)
   }
-
+  # browser()
   # check funEval
   if (is.null(optP$funEval)) {
     optP$funEval <- 1
     optP$nCpusFunEval <- 1
   }
 
-
-
-  ## save some information ----
+    ## save some information ----
   optP$nCpus <- optP$nCpusFunEval * optP$nCpusProposePoints
   optP$opMethod <- "Bayesian Optimization"
   resultFile <-  paste0(outputFolder,
@@ -92,7 +90,6 @@ bayesianOptimization <- function(
 
 
   # mlrMBO setup ----
-
   ## Learner ----
   learner = makeLearner(
     "regr.km",
@@ -217,7 +214,6 @@ bayesianOptimization <- function(
     }
   }
   # final point prediction
-
   # if (length(run$models) != 0) {
   #   model <- run$models[[1]]$learner.model
   # } else if (length(run$final.opt.state$models) != 0) {
@@ -247,7 +243,7 @@ bayesianOptimization <- function(
                  bestPoint_pred = bestPoint_pred,
                  mboRawRes = run,
                  startTime = startTime)
-
+  # browser()
   # save results ----
   i <- 1
   resF <-  paste0(resultFile, '.rds')
@@ -369,7 +365,8 @@ randomExploration <- function(
   if (optP$funEval != 1) {
     fun <- function(x) {
       # remove the seed to not repeat the same simulation
-      x[5] <- NA
+      # x[5] <- NA
+      x[7] <- NA  # Seed is now on the 7th place
       rep.x = replicate(optP$funEval, x, simplify = FALSE)
       res <- unlist(mclapply(rep.x, simSetup$objFun,
                              mc.cores = optP$nCpusFunEval))
@@ -391,7 +388,8 @@ randomExploration <- function(
                          simplify = TRUE,
                          level = "custom.objective")
   results <- data.frame(initTrain_params, results)
-  colnames(results)[6] <- paste0("BV_", simSetup$fixedParams$aggrFunName)
+  # colnames(results)[6] <- paste0("BV_", simSetup$fixedParams$aggrFunName) # browser()
+  colnames(results)[length(simSetup$optParams$pars)+2] <- paste0("BV_", simSetup$fixedParams$aggrFunName)
   results$dob <- 0
 
 
@@ -405,7 +403,8 @@ randomExploration <- function(
                            simplify = TRUE,
                            level = "custom.objective")
     res <- data.frame(sampledParams, res)
-    colnames(res)[6] <- paste0("BV_", simSetup$fixedParams$aggrFunName)
+    # colnames(res)[6] <- paste0("BV_", simSetup$fixedParams$aggrFunName)
+    colnames(res)[length(simSetup$optParams$pars)+2] <- paste0("BV_", simSetup$fixedParams$aggrFunName)
     res$dob <- c(rep(1:optP$totalIter, each = optP$propose.points))
     results <- rbind(results, res)
   } else {
@@ -484,7 +483,9 @@ randomExploration <- function(
   bestPoint <- list(i = results$i[id],
                     iHomo = results$iHomo[id],
                     bRep = results$bRep[id],
-                    phenoFreq = results$phenoFreq[id])
+                    phenoFreq = results$phenoFreq[id],
+                    NewIndSlope = results$NewIndSlope[id],
+                    SelIntSlope = results$SelIntSlope[id])
 
 
   # create
@@ -550,6 +551,8 @@ repeatOptResults <- function(optRes,
                               iHomo = optRes$bestPoint$iHomo,
                               bRep = optRes$bestPoint$bRep,
                               phenoFreq = optRes$bestPoint$phenoFreq,
+                              NewIndSlope = optRes$bestPoint$NewIndSlope,
+                              SelIntSlope = optRes$bestPoint$SelIntSlope,
                               setup = optRes$simSetup,
                               seeds = mainSeed,
                               nRep = nRep,
@@ -585,6 +588,8 @@ repeatOptResults <- function(optRes,
 #' @param iHomo
 #' @param bRep
 #' @param phenoFreq
+#' @param NewIndSlope
+#' @param SelIntSlope
 #' @param setup list return by the function `setupsimulation`.
 #' @param seeds [optional] Either a vector of random number generation seeds
 #' for each replication. (The lenght of this vector should be equal to `nRep`.)
@@ -601,15 +606,20 @@ singleSimulation <- function(i,
                              iHomo,
                              bRep,
                              phenoFreq,
+                             NewIndSlope,
+                             SelIntSlope,
                              setup,
                              seeds = NULL,
                              nRep = 1,
                              nCpus = 1){
 
   startTime <- Sys.time()
-
+  # browser()
+  if (is.null(NewIndSlope) | is.null(SelIntSlope)) {
+    errorCondition("NewIndSlope or SelIntSlope is null")
+  }
   # create list of parameters for parallel computing
-  rep_x <- matrix(rep(c(i, iHomo, bRep, phenoFreq), nRep),
+  rep_x <- matrix(rep(c(i, iHomo, bRep, phenoFreq,NewIndSlope,SelIntSlope), nRep),
                   nrow = nRep,
                   byrow = TRUE)
 
@@ -637,6 +647,8 @@ singleSimulation <- function(i,
                         iHomo = iHomo,
                         bRep = bRep,
                         phenoFreq = phenoFreq,
+                        NewIndSlope = NewIndSlope,
+                        SelIntSlope = SelIntSlope,
                         seed = seeds,
                         res)
   rownames(results) <- seq(nRep)
@@ -666,6 +678,8 @@ singleSimulation <- function(i,
                                iHomo = iHomo,
                                bRep = bRep,
                                phenoFreq = phenoFreq,
+                               NewIndSlope,
+                               SelIntSlope,
                                seeds = seeds,
                                nRep = nRep,
                                nCpus = nCpus),
