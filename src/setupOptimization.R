@@ -106,7 +106,15 @@ setupOpt <- function(simSetup_dataFile,
     makeIntegerParam(id = "phenoFreq",
                      lower = 1,
                      upper = fp$nGen,
-                     default = 1)
+                     default = 1),
+    makeNumericParam(id = "NewIndSlope",
+                     lower = -1,
+                     upper = 1,
+                     default = 0),
+    makeNumericParam(id = "SelIntSlope",
+                     lower = -1,
+                     upper = 1,
+                     default = 0)
   )
 
 
@@ -121,12 +129,16 @@ setupOpt <- function(simSetup_dataFile,
     iHomo = x[2]
     bRep = x[3]
     phenoFreq = x[4]
-
+    NewIndSlope = x[5]
+    SelIntSlope = x[6]
+    browser()
     # get simulation parameters
     newParams <- list(i = i,
                       iHomo = iHomo,
                       bRep = bRep,
                       phenoFreq = phenoFreq,
+                      NewIndSlope = NewIndSlope,
+                      SelIntSlope = SelIntSlope,
                       budget = fp$budget,
                       nGen = fp$nGen,
                       nIndIni = fp$initPop$nInd,

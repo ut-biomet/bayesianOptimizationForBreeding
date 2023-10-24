@@ -67,7 +67,6 @@ setupSimulation <- function(dataFile,
                             seed = NULL,
                             verbose = TRUE) {
 
-
   # test totalBudget and plotBudjetPerGen
   if ((is.null(totalBudget) && is.null(plotBudjetPerGen))
     || (!is.null(totalBudget) && !is.null(plotBudjetPerGen))) {
@@ -155,7 +154,15 @@ setupSimulation <- function(dataFile,
     makeIntegerParam(id = "phenoFreq",
                      lower = 1,
                      upper = fp$nGen,
-                     default = 1)
+                     default = 1),
+    makeNumericParam(id = "NewIndSlope",
+                     lower = -1,
+                     upper = 1,
+                     default = 0),
+    makeNumericParam(id = "SelIntSlope",
+                     lower = -1,
+                     upper = 1,
+                     default = 0)
   )
 
 
@@ -368,7 +375,9 @@ createObjFun <- function(fixedParams,
                 iHomo = x[2],
                 bRep = x[3],
                 phenoFreq = x[4],
-                seed = x[5],
+                NewIndSlope = x[5],
+                SelIntSlope = x[6],
+                seed = x[7],
                 budget = fixedParams$budget,
                 nGen = fixedParams$nGen,
                 initPop = fixedParams$initPop,
