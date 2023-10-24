@@ -56,7 +56,6 @@ breedSimOpt <- function(i,
     names(results) <- paste0('BV_', aggrFunName)
     return(results)
   }
-
   # get simulation parameters
     newParams <- list(i = i,
                       iHomo = iHomo,
@@ -70,6 +69,8 @@ breedSimOpt <- function(i,
                       NewIndSlope = NewIndSlope,
                       SelIntSlope = SelIntSlope)
     params <- do.call(getSimulParams, newParams)
+    # cat("\r\n      nNew : ", params$nNew)
+    # cat("\r\n nSelected : ", params$nSelected)
     # browser()
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
                                nSelected = params$nSelected,
@@ -266,11 +267,11 @@ getSimulParams <- function(i,
   nInd <- c(nIndIni, nNew[1:nGen - 1])
 
   if (any(nSelected > nInd)) {
-    warning("nSelected > nInd detected. set nSelected to nInd")
+    warning("nSelected > nInd detected. set nSelected to nInd\r\n")
     nSelected[nSelected > nInd] <- nInd[nSelected > nInd]
   }
   if (any(nSelected > nNew)) {
-    warning("nSelected > nNew detected. set nSelected to nNew")
+    warning("nSelected > nNew detected. set nSelected to nNew\r\n")
     nSelected[nSelected > nNew] <- nNew[nSelected > nNew]
   }
   if (any(nPheno[nPheno != 0] < nInd[nPheno != 0])) {
@@ -460,7 +461,7 @@ slope_i <- function(
   else if (mode == 3)# slope unbounded / i bounded
     {
     slope = tan(s*pi/2)
-    print(slope)
+    # print(slope)
     list_i = slope * (1:nGen) + i0
     # put values in bounds [0;1]
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])

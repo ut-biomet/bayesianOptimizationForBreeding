@@ -220,11 +220,11 @@ optP <- list(
   acquFunction = makeMBOInfillCritEI(),
   filter.proposed.points = TRUE, # should bayesian opt avoid sampling parameters too close to each-other
   filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
-  propose.points = 3, # number of points evaluated at each iteration
-  nCpusProposePoints = 3, # number of core to use for evaluating the points at each iteration
+  propose.points = 5, # number of points evaluated at each iteration
+  nCpusProposePoints = 5, # number of core to use for evaluating the points at each iteration
   totalIter = 10, # total number of iteration
   # time.budget = 60*30, # total time available for the optimization
-  initTrainSize = 5, # initial training data size
+  initTrainSize = 7, # initial training data size (must be at least the number of dimension)
   funEval = 1, # see below
   nCpusFunEval = 1 # see below
 )
@@ -375,7 +375,7 @@ optStart <- Sys.time()
 
 invisible(mcmapply(
   function(setup, seed, optP) {
-    
+    # browser()
     # do bayesian optimization
     bayesRes <- bayesianOptimization(
       mainSeed = seed$BO,
@@ -404,14 +404,14 @@ invisible(mcmapply(
     
     # send notification about the progress
     nResFile <- length(list.files(repResultFolder))
-    if (nResFile %in% (2*floor(quantile(seq(length(simSetupList)*2))/2))) {
-      progress <- nResFile / (length(simSetupList) * 2)
-      msg <- paste0('Optimization in progress...\n',
-                    progress * 100, "% ", 'in ',
-                    as.character.POSIXt(difftime(Sys.time(), optStart))
-      )
-      sendNotification(msg)
-    }
+    # if (nResFile %in% (2*floor(quantile(seq(length(simSetupList)*2))/2))) {
+    #   progress <- nResFile / (length(simSetupList) * 2)
+    #   msg <- paste0('Optimization in progress...\n',
+    #                 progress * 100, "% ", 'in ',
+    #                 as.character.POSIXt(difftime(Sys.time(), optStart))
+    #   )
+    #   sendNotification(msg)
+    # }
     
     
     invisible(NULL)
