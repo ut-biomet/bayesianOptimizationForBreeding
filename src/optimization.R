@@ -654,7 +654,7 @@ singleSimulation <- function(i,
   rownames(results) <- seq(nRep)
 
   fp <- setup$fixedParams
-  colnames(results)[6] <- paste0("BV_", fp$aggrFunName)
+  colnames(results)[ncol(results)] <- paste0("BV_", fp$aggrFunName)
 
   # add fixed parameters to results
   for (j in names(fp)) {
@@ -678,8 +678,8 @@ singleSimulation <- function(i,
                                iHomo = iHomo,
                                bRep = bRep,
                                phenoFreq = phenoFreq,
-                               NewIndSlope,
-                               SelIntSlope,
+                               NewIndSlope = NewIndSlope,
+                               SelIntSlope = SelIntSlope,
                                seeds = seeds,
                                nRep = nRep,
                                nCpus = nCpus),

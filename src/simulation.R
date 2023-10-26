@@ -29,7 +29,7 @@
 #'
 #' @return aggregated results of the breeding simulation
 breedSimOpt <- function(i,
-                        SelIntSlope = 0, #SelIntSlope = s
+                        SelIntSlope, #SelIntSlope = s
                         iHomo,
                         bRep,
                         phenoFreq,
@@ -39,7 +39,7 @@ breedSimOpt <- function(i,
                         initPop,
                         plotCost,
                         newIndCost,
-                        NewIndSlope = 0, #NewIndSlope = r
+                        NewIndSlope, #NewIndSlope = r
                         trait,
                         phenotyper,
                         createModel,
@@ -213,8 +213,8 @@ getSimulParams <- function(i,
                            iHomo,
                            bRep,
                            phenoFreq,
-                           NewIndSlope = 0, #NewIndSlope = r : Shape parameter for New Individuals repartition
-                           SelIntSlope = 0, #SelIntSlope = s : Shape parameter for Selection intensity
+                           NewIndSlope, #NewIndSlope = r : Shape parameter for New Individuals repartition
+                           SelIntSlope, #SelIntSlope = s : Shape parameter for Selection intensity
                            budget,
                            nGen,
                            nIndIni,
@@ -431,7 +431,7 @@ calcNpheno <- function(phenoFreq,
 #' @return list of the values of i for all generations
 slope_i <- function(
     i0,
-    s = 0,
+    s,
     nGen,
     mode = 1,
     i0_Bounds = c(0,1),
@@ -478,6 +478,12 @@ slope_i <- function(
     {
     #functions turn the values of i0 and s into values btw 0 and +inf
     list_i = dbeta((1:nGen)/nGen, shape1 =  1/(1-i0)-1, shape2 = 2/(1-s)-1)
+    list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
+  }
+  else if (mode == 6) # Beta law
+  {
+    #functions turn the values of i0 and s into values btw 0 and +inf
+    list_i = s/(1+exp(-i0*(1:nGen-(((1+nGen)/2)))))+(1-s)/2
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
   else{
