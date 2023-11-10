@@ -69,8 +69,14 @@ breedSimOpt <- function(i,
                       NewIndSlope = NewIndSlope,
                       SelIntSlope = SelIntSlope)
     params <- do.call(getSimulParams, newParams)
-    # cat("\r\n      nNew : ", params$nNew)
-    # cat("\r\n nSelected : ", params$nSelected)
+    cat("nIndIni : ",initPop$nInd)
+    cat("\r\n NewIndSlope : ", NewIndSlope)
+    cat("\r\n        nNew : ", params$nNew)
+    cat("\r\n SelIntSlope : ", SelIntSlope)
+    cat("\r\n           i : ", slope_i(i0 = i, s = SelIntSlope,
+                                       nGen = nGen - 1, mode = 1,
+                                       i0_Bounds = c(0,1), s_Bounds = c(-1,1)))
+    cat("\r\n  nSelected : ", params$nSelected)
     # browser()
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
                                nSelected = params$nSelected,
@@ -252,7 +258,7 @@ getSimulParams <- function(i,
   # 3 - calc number of selected individuals for each generation
   # nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
   nSel <- pmax(round(nNew[1:nGen-1] * slope_i(i0 = i, s = SelIntSlope,
-                                              nGen = nGen - 1, mode = 5,
+                                              nGen = nGen - 1, mode = 1,
                                               i0_Bounds = c(0,1), s_Bounds = c(-1,1)) #careful if the bounds changes
                      ), 1)
 
@@ -447,7 +453,10 @@ slope_i <- function(
   }
 
   # Modes
-  if (mode == 1) # slope bounded in
+  if (mode == 0) {
+    list_i <- rep(i0,nGen)
+  }
+  else if (mode == 1) # slope bounded in
     {
     slope = (s < 0) * s*(i0)/nGen + (s >= 0) * s*(1 - i0)/nGen
     list_i = slope * (1:nGen) + i0
@@ -480,15 +489,30 @@ slope_i <- function(
     list_i = dbeta((1:nGen)/nGen, shape1 =  1/(1-i0)-1, shape2 = 2/(1-s)-1)
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
-  else if (mode == 6) # Beta law
+  else if (mode == 6) # logistic function
   {
     #functions turn the values of i0 and s into values btw 0 and +inf
     list_i = s/(1+exp(-i0*(1:nGen-(((1+nGen)/2)))))+(1-s)/2
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
+  else if (mode == 7) # Beta law
+  {
+    #functions turn the values of i0 and s into values btw 0 and +inf
+    list_i = beta_law(vec_x = (1:nGen)/s/nGen,alpha = i0, beta = 1)
+    list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
+  }
   else{
     errorCondition("Not defined yet")
   }
+
   # print(list_i)
   list_i
+}
+
+
+# Beta law like function
+beta_law <- function(vec_x,
+                     alpha,
+                     beta){
+  return(sapply(vec_x,function(g) g^(alpha-1)*(1-g)^(beta-1)))
 }
