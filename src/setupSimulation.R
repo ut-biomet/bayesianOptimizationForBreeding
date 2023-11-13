@@ -75,25 +75,27 @@ setupSimulation <- function(dataFile,
 
 
   # Load geno data ----
-
+  # browser()
   # set random seed:
   if (!is.null(seed)) {
     prevSeed <- .Random.seed
     set.seed(seed)
   }
-
   genoDta <- loadData(dataFile = dataFile,
                       nSNP = nSNP,
                       verbose = verbose)
-
   dataFileId <- paste0(basename(dataFile), "_",
                        digest(dataFile, file = TRUE))
   filteredDataId <- digest(genoDta)
 
   # reset the seed
+  # if (!is.null(seed)) {
+  #   set.seed(prevSeed)
+  # }
   if (!is.null(seed)) {
-    set.seed(prevSeed)
-  }
+      set.seed(seed)
+    }
+
 
 
   # Create breedSimulatR's objects ----
@@ -232,7 +234,6 @@ setupSimulation <- function(dataFile,
 
 
 loadData <- function(dataFile , nSNP, verbose) {
-
   # read data file ----
   if (verbose) cat("Load genotypic data ...\n")
 

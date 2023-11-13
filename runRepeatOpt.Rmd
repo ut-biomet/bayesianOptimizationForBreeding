@@ -50,8 +50,8 @@ nCPU <- detectCores()
 # nCPU <- 2
 nRepOpt <- 1 # number of optimization repetitions
 # nRepOpt <- 1024 # number of optimization repetitions
-repRes_nRep <- 1 # number of opt result evaluations
-repRes_nCpus <- 2 # number of core to use for opt result evaluations
+repRes_nRep <- 8 # number of opt result evaluations   #CHANGE HERE
+repRes_nCpus <- 8 # number of core to use for opt result evaluations
 
 simSetupFolder <- "simSetups"
 optSetupFolder <- "optSetups"
@@ -146,7 +146,7 @@ fixedSetupParams <- list(
   specName = "bayesOpt",
   popName = "initialPop",
   traitName = "trait1",
-  seed = 2021,
+  seed = ifelse(is.null(PopSetupSeed),2023,PopSetupSeed),
   verbose = TRUE
 )
 ```
@@ -220,11 +220,11 @@ optP <- list(
   acquFunction = makeMBOInfillCritEI(),
   filter.proposed.points = TRUE, # should bayesian opt avoid sampling parameters too close to each-other
   filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
-  propose.points = 5, # number of points evaluated at each iteration
-  nCpusProposePoints = 5, # number of core to use for evaluating the points at each iteration
-  totalIter = 10, # total number of iteration
+  propose.points = 16, # number of points evaluated at each iteration
+  nCpusProposePoints = 8, # number of core to use for evaluating the points at each iteration
+  totalIter = 5, # total number of iteration
   # time.budget = 60*30, # total time available for the optimization
-  initTrainSize = 7, # initial training data size (must be at least the number of dimension)
+  initTrainSize = 16, # initial training data size (must be at least the number of dimension)
   funEval = 1, # see below
   nCpusFunEval = 1 # see below
 )
