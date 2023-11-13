@@ -254,6 +254,10 @@ getSimulParams <- function(i,
   indTot <- x["indTot"]
   nPhenoTot <- x["nPheno"]
 
+  # Set NewIndSlope to 0 if SelIntmode = 0
+  if (SelIntmode == 0) {
+    NewIndSlope = 0
+  }
   # 2 - calc number of new individuals for each generation
   nNew <- calcNnew(r = NewIndSlope,
                    nTot = indTot,
