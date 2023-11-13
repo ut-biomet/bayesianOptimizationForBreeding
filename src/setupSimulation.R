@@ -23,6 +23,7 @@
 #' the total budget will be calculated by:
 #' `totalBudget = nGen * plotCost * plotBudgetPerGen`
 #' @param nSNP total number of SNP
+#' @param SelIntmode Mode for the slope_i function
 #' @param mu phenotypic mean (see: breedSimulatR::phenotyper)
 #' @param he heritability (see: breedSimulatR::phenotyper)
 #' @param ve environmental variance (see: breedSimulatR::phenotyper)
@@ -54,6 +55,7 @@ setupSimulation <- function(dataFile,
                             totalBudget = NULL,
                             plotBudjetPerGen = NULL,
                             nSNP = NULL,
+                            SelIntmode = NULL, # Mode for the slope_i function
                             mu = 0,
                             he = NULL,
                             ve = NULL,
@@ -124,6 +126,7 @@ setupSimulation <- function(dataFile,
   fp$plotBudjetPerGen = totalBudget / nGen
   fp$plotCost       = plotCost
   fp$newIndCost     = newIndCost
+  fp$SelIntmode     = SelIntmode
   fp$initPop        = BSR_Obj$initPop      # initial population
   fp$trait          = BSR_Obj$trait        # trait of interest
   fp$phenotyper     = BSR_Obj$phenotyper   # phenotyper
@@ -385,6 +388,7 @@ createObjFun <- function(fixedParams,
                 plotCost = fixedParams$plotCost,
                 newIndCost = fixedParams$newIndCost,
                 trait = fixedParams$trait,
+                SelIntmode = fixedParams$SelIntmode,
                 phenotyper = fixedParams$phenotyper,
                 createModel = fixedParams$createModel,
                 selectMateInds = fixedParams$selectMateInds,

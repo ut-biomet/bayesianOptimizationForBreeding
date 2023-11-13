@@ -20,6 +20,7 @@
 #' @param newIndCost
 #' @param NewIndSlope
 #' @param trait
+#' @param SelIntmode
 #' @param phenotyper
 #' @param createModel
 #' @param selectMateInds
@@ -41,6 +42,7 @@ breedSimOpt <- function(i,
                         newIndCost,
                         NewIndSlope, #NewIndSlope = r
                         trait,
+                        SelIntmode, # selection intensity function (slope_i function)
                         phenotyper,
                         createModel,
                         selectMateInds,
@@ -67,15 +69,16 @@ breedSimOpt <- function(i,
                       plotCost = plotCost,
                       newIndCost = newIndCost,
                       NewIndSlope = NewIndSlope,
-                      SelIntSlope = SelIntSlope)
+                      SelIntSlope = SelIntSlope,
+                      SelIntmode = SelIntmode)
     params <- do.call(getSimulParams, newParams)
     cat("nIndIni : ",initPop$nInd)
     cat("\r\n NewIndSlope : ", NewIndSlope)
     cat("\r\n        nNew : ", params$nNew)
     cat("\r\n SelIntSlope : ", SelIntSlope)
-    cat("\r\n           i : ", slope_i(i0 = i, s = SelIntSlope,
-                                       nGen = nGen - 1, mode = 1,
-                                       i0_Bounds = c(0,1), s_Bounds = c(-1,1)))
+    cat("\r\n           i : ", slope_i(i0 = i, SelIntSlope = SelIntSlope,
+                                       nGen = nGen - 1, SelIntmode = SelIntmode,
+                                       i0_Bounds = c(0,1), SelIntSlope_Bounds = c(-1,1)))
     cat("\r\n  nSelected : ", params$nSelected)
     # browser()
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
@@ -213,6 +216,7 @@ simuleBreeding <- function(nPheno,
 #' @param plotCost
 #' @param newIndCost
 #' @param NewIndSlope slope parameter for
+#' @param SelIntmode
 #'
 #' @return list of four elements: `nPheno`, `nSelected`, `nNew` (see documentation of `simuleBreeding` function), `eff.i`, `eff.budget` the effective budgets used for the breeding campaign.
 getSimulParams <- function(i,
@@ -221,6 +225,7 @@ getSimulParams <- function(i,
                            phenoFreq,
                            NewIndSlope, #NewIndSlope = r : Shape parameter for New Individuals repartition
                            SelIntSlope, #SelIntSlope = s : Shape parameter for Selection intensity
+                           SelIntmode,  #selection intensity function (slope_i function)
                            budget,
                            nGen,
                            nIndIni,
@@ -257,9 +262,9 @@ getSimulParams <- function(i,
 
   # 3 - calc number of selected individuals for each generation
   # nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
-  nSel <- pmax(round(nNew[1:nGen-1] * slope_i(i0 = i, s = SelIntSlope,
-                                              nGen = nGen - 1, mode = 1,
-                                              i0_Bounds = c(0,1), s_Bounds = c(-1,1)) #careful if the bounds changes
+  nSel <- pmax(round(nNew[1:nGen-1] * slope_i(i0 = i, SelIntSlope = SelIntSlope,
+                                              nGen = nGen - 1, SelIntmode = SelIntmode,
+                                              i0_Bounds = c(0,1), SelIntSlope_Bounds = c(-1,1)) #careful if the bounds changes
                      ), 1)
 
   nSelected[2:nGen] <- nSel
@@ -428,77 +433,77 @@ calcNpheno <- function(phenoFreq,
 #' for all generation following to a specific function
 #'
 #' @param i0 initial value of i (generation 1)
-#' @param s slope parameter for mode 1 and 2 /!\ the definition changes between modes
+#' @param SelIntSlope slope parameter for SelIntmode 1 and 2 /!\ the definition changes between modes
 #' @param nGen number of generation
-#' @param mode 1,2 (or 3) are equivalent to different shape of i across generations
+#' @param SelIntmode 1,2 (or 3) are equivalent to different shape of i across generations
 #' @param i0_Bounds bounds for the values of i0 and i
-#' @param s_Bounds bounds for the values of s
+#' @param SelIntSlope_Bounds bounds for the values of SelIntSlope
 #'
 #' @return list of the values of i for all generations
 slope_i <- function(
     i0,
-    s,
+    SelIntSlope,
     nGen,
-    mode = 1,
+    SelIntmode = 1,
     i0_Bounds = c(0,1),
-    s_Bounds = c(-1,1)){
+    SelIntSlope_Bounds = c(-1,1)){
    #check bounds
   if (i0_Bounds[1] > i0 | i0 > i0_Bounds[2])
     {
     errorCondition(paste0("i0 Not in bounds [",i0_Bounds,"]"))
   }
-  if (s_Bounds[1] > s | s > s_Bounds[2])
+  if (SelIntSlope_Bounds[1] > SelIntSlope | SelIntSlope > SelIntSlope_Bounds[2])
     {
-    errorCondition(paste0("s Not in bounds [",s_Bounds,"]"))
+    errorCondition(paste0("SelIntSlope Not in bounds [",SelIntSlope_Bounds,"]"))
   }
 
   # Modes
-  if (mode == 0) {
+  if (SelIntmode == 0) {
     list_i <- rep(i0,nGen)
   }
-  else if (mode == 1) # slope bounded in
+  else if (SelIntmode == 1) # slope bounded in
     {
-    slope = (s < 0) * s*(i0)/nGen + (s >= 0) * s*(1 - i0)/nGen
+    slope = (SelIntSlope < 0) * SelIntSlope*(i0)/nGen + (SelIntSlope >= 0) * SelIntSlope*(1 - i0)/nGen
     list_i = slope * (1:nGen) + i0
   }
-  else if (mode == 2)  # slope bounded in
+  else if (SelIntmode == 2)  # slope bounded in
   {
-    slope = s*pmin(i0,1 - i0)/nGen
-    # slope = (s < 0) * s*(i0)/nGen + (s >= 0) * s*(1 - i0)/nGen
+    slope = SelIntSlope*pmin(i0,1 - i0)/nGen
+    # slope = (SelIntSlope < 0) * SelIntSlope*(i0)/nGen + (SelIntSlope >= 0) * SelIntSlope*(1 - i0)/nGen
     list_i = slope * (1:nGen) + i0
   }
-  else if (mode == 3)# slope unbounded / i bounded
+  else if (SelIntmode == 3)# slope unbounded / i bounded
     {
-    slope = tan(s*pi/2)
+    slope = tan(SelIntSlope*pi/2)
     # print(slope)
     list_i = slope * (1:nGen) + i0
     # put values in bounds [0;1]
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
-  else if (mode == 4) # slope unbounded / i middle value
+  else if (SelIntmode == 4) # slope unbounded / i middle value
     {
-    slope = tan(s*pi/2)
+    slope = tan(SelIntSlope*pi/2)
     # print(slope)
     list_i = slope * ((1:nGen)-floor(nGen/2)) + i0
     # put values in bounds [i0_Bounds]
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
-  else if (mode == 5) # Beta law
+  else if (SelIntmode == 5) # Beta law
     {
-    #functions turn the values of i0 and s into values btw 0 and +inf
-    list_i = dbeta((1:nGen)/nGen, shape1 =  1/(1-i0)-1, shape2 = 2/(1-s)-1)
+    #functions turn the values of i0 and SelIntSlope into values btw 0 and +inf
+    list_i = dbeta((1:nGen)/nGen, shape1 =  1/(1-i0)-1, shape2 = 2/(1-SelIntSlope)-1)
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
-  else if (mode == 6) # logistic function
+  else if (SelIntmode == 6) # logistic function
   {
-    #functions turn the values of i0 and s into values btw 0 and +inf
-    list_i = s/(1+exp(-i0*(1:nGen-(((1+nGen)/2)))))+(1-s)/2
+    #functions turn the values of i0 and SelIntSlope into values btw 0 and +inf
+    list_i = SelIntSlope/(1+exp(-i0*(1:nGen-(((1+nGen)/2)))))+(1-SelIntSlope)/2
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
-  else if (mode == 7) # Beta law
+  else if (SelIntmode == 7) # Beta law
   {
-    #functions turn the values of i0 and s into values btw 0 and +inf
-    list_i = beta_law(vec_x = (1:nGen)/s/nGen,alpha = i0, beta = 1)
+    #functions turn the values of i0 and SelIntSlope into values btw 0 and +inf
+    list_i = beta_law(vec_x = (1:nGen)/SelIntSlope/nGen,alpha = i0, beta = 1)
     list_i = pmax(pmin(list_i,i0_Bounds[2]),i0_Bounds[1])
   }
   else{
