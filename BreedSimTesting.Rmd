@@ -155,7 +155,7 @@ input_list = list(i = x[1],
 
 
 
-for (k in 1:50) {
+for (k in 1:1) {
   NewIndSlope = runif(n = 1, min = 0, max = 1)
   SelIntSlope = runif(n = 1, min = -1, max = 1)
   cat(paste("\r\n",k,"\r\n NewIndSlope : ", round(NewIndSlope,3), 
@@ -199,7 +199,7 @@ res <- breedSimOpt(i = x[1],
 ```{r}
 #Evaluation function
 Test_Breeding_camp <- function(i,
-                        SelIntSlope = 0,
+                        SelIntSlope,
                         iHomo,
                         bRep,
                         phenoFreq,
@@ -209,7 +209,7 @@ Test_Breeding_camp <- function(i,
                         initPop,
                         plotCost,
                         newIndCost,
-                        NewIndSlope = 0, #NewIndSlope
+                        NewIndSlope, #NewIndSlope
                         trait,
                         phenotyper,
                         createModel,
@@ -289,28 +289,27 @@ for (k in 2:13) {
 
 # Test for different values of r
 ```{r}
-x = c()
-for (i in seq(1000)) {
-  ntot = floor(runif(1, 50, 150))
-  ngen = floor(runif(1, 3, 20))
-  r = runif(1, -1,1)
-  x <- c(x,sum(calcNnew(ntot, ngen, r = r)))
+nGen <- 10
+n <- 20
+
+# s_values <- seq(0,1,0.1)
+# i0 = 0.1
+
+param_table <- data.frame(i0 = runif(n,0,1), 
+                          s = runif(n,-1,1))
+
+plotDta <- data.frame(x = seq(0, nGen, length.out = nGen))
+combined_plot <- plot_ly(type = "scatter", mode = "lines", data = plotDta, x = ~x)#, y = ~y1, name = "y1")
+
+# Use lapply to add lines for each y2 value
+for (values in 1:n) {
+  combined_plot <- combined_plot %>% add_lines(y = slope_i(i0 = param_table$i0[values],
+                                                           s = param_table$s[values],
+                                                           nGen = nGen,
+                                                           mode = 6),
+                                               name = paste("s =", round(param_table$s[values], 1)," ; i0 =", round(param_table$i0[values], 1)))
 }
-
-
-# clacNnew2 <- function clacNnew2(nGen = 15, nTot = 100 )
-plotDta <- data.frame(x = seq(-1, 1, length.out = 200)) %>%
-	dplyr::mutate(y1 = sum(calcNnew(nGen = 15, nTot = 100, r = x)), y2 = dnorm(x, 1, 0.5))
-	plot_ly(
-		type = "scatter",
-		mode = "lines",
-		data = plotDta,
-		x = ~ x,
-		y = ~ y1,
-		name = "y1"
-	) %>%
-	add_lines(y = ~ y2, name = "y2", ) %>%
-	layout(hovermode = 'compare')
+combined_plot %>% layout(hovermode = 'compare')
 ```
 
 
@@ -429,8 +428,11 @@ x <- seq(1,nGen)
 i0_Bounds = c(0,1)
 s_Bounds = c(-1,1)
 # Define different sets of parameters for the beta distribution
-i0_values <- seq(0.5,0.75,0.25)
-s_values <- seq(-0.75,0.5,0.25)
+# i0_values <- c(1)#seq(0.5,0.75,0.25)
+s_values <- seq(-1,1,0.25)
+
+i0_values <- seq(0,1,0.5)
+# s_values <- c(1)#seq(-1,1,0.25)
 param_df = expand.grid(s=s_values,i0=i0_values)
 
 mode = 5
@@ -452,18 +454,22 @@ colnames(res_df) = c('x',param_names)
 names(legend_names) = param_names
 
 for (line_param in 1:nrow(param_df)){
-  y = slope_i(i0 = param_df$i0[line_param], 
-              s = param_df$s[line_param],
-              nGen = nGen, 
-              mode = mode,
-              i0_Bounds = i0_Bounds, 
-              s_Bounds = s_Bounds)
+  # y = slope_i(i0 = param_df$i0[line_param], 
+  #             s = param_df$s[line_param],
+  #             nGen = nGen, 
+  #             mode = mode,
+  #             i0_Bounds = i0_Bounds, 
+  #             s_Bounds = s_Bounds)
+  i0 = param_df$i0[line_param]
+  s <- param_df$s[line_param]
+  print(paste0("s=",s," ; i0=",i0))
+  y = s/(1+exp(-i0*(1:nGen-(((1+nGen)/2)))))+(1-s)/2
   # print(length(y))
   res_df[param_names[line_param]] = y 
 }
 
 # Create figure
-MainColorlist = c('red', 'blue', 'green')
+MainColorlist = c('red', 'blue', 'green',"yellow",'magenta')
 colorPalette <- unlist(lapply( MainColorlist[1:length(i0_values)], function(baseColor) colorRampPalette(c(baseColor, "white"))(length(s_values)+1)[1:length(s_values)]))
 
 
@@ -491,4 +497,81 @@ for (name in param_names[-1]) {
 
 fig
 ```
+# Opening result files
+```{r}
+library(dbplyr)
+library(rlang)
+library(plotly)
+#read result files
+list_file <- lapply(X = list.files("output-optimization/"), FUN = function(file){
+  paste0('output-optimization/',file,"/",list.files(paste0('output-optimization/',file)))
+  }) %>%
+  unlist %>%
+  .[grepl(pattern = "bo", .)]
+list_file
+
+resTable <- lapply(list_file,function(file){
+                                       data = readRDS(file)
+                                       # print(unlist(data$bestPoint))
+                                       return(unlist(data$bestPoint))
+                                     }) %>%
+  do.call(rbind,.)
+rownames(resTable) <- paste0("res_",1:nrow(resTable))
+resTable
+```
+
+#plot NewInd across generation
+```{r}
+# constants
+nGen <- 5
+totalBudget <-  200 * nGen
+newIndCost <- 1
+
+# plot NewInd across generations
+
+colorPalette = c('red', 'blue', 'green',"yellow",'magenta','gray')
+x <- 1:nGen
+
+NewInd_df <- data.frame(x = x,
+                    matrix(nrow = length(x), ncol = nrow(resTable)))
+legend_names = unlist(lapply(1:nrow(resTable),
+                             FUN = function(line_param) paste0('NewIndSlope= ',round(resTable[line_param,'NewIndSlope'],3))))
+param_names = unlist(lapply(legend_names, function(u) paste0('hash',hash(u))))
+colnames(NewInd_df) = c('x',param_names)
+names(legend_names) = param_names
+
+
+for (line_param in 1:nrow(resTable)){
+  nTot <- totalBudget * (1-resTable[line_param,'bRep'])
+  print(paste0('nTot = ',nTot))
+  y <-  (nTot / nGen) * (1 - resTable[line_param,'NewIndSlope'] + ((2 * resTable[line_param,'NewIndSlope'] * (x - 1)) / (nGen - 1)))
+  # print(length(y))
+  NewInd_df[param_names[line_param]] = y
+}
+
+
+names(colorPalette) = param_names
+fig <- plot_ly(data = NewInd_df,
+               x = ~x,
+               y = as.formula(paste0('~', param_names[1])),
+               name = legend_names[param_names[1]],
+               type = 'scatter', mode = 'lines+markers',
+               marker = list(color = colorPalette[param_names[1]]),
+               line = list(color = colorPalette[param_names[1]])) %>%
+  plotly::layout(title = "",
+                 xaxis = list(title = "Generation"),
+                 yaxis = list (title = "nNew"))
+
+for (name in param_names[-1]) {
+  print(as.formula(paste0('~', name)))
+  fig = fig %>% add_trace(data = NewInd_df, x = x, y = as.formula(paste0('~', name)),
+                          marker = list(color = colorPalette[name]),
+                          line = list(color = colorPalette[name]),
+                          name=legend_names[name])
+}
+
+fig
+
+```
+
 
