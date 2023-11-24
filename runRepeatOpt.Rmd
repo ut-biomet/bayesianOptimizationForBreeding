@@ -63,10 +63,10 @@ We create new folders inside the main ones to not overwrite previous results.
 
 ```{r create-outFolders}
 date <- format(knitStartTime, "%Y-%m-%d_%H-%M-%S")
-simSetupFolder <- paste0(simSetupFolder, "/", date)
-optSetupFolder <- paste0(optSetupFolder, "/", date)
-optResultFolder <- paste0(optResultFolder, "/", date)
-repResultFolder <- paste0(repResultFolder, "/", date)
+simSetupFolder <- paste0(simSetupFolder, "/", date, "-(",StartPop_k,")")
+optSetupFolder <- paste0(optSetupFolder, "/", date, "-",StartPop_k,")")
+optResultFolder <- paste0(optResultFolder, "/", date, "-",StartPop_k,")")
+repResultFolder <- paste0(repResultFolder, "/", date, "-",StartPop_k,")")
 
 for (dir in c(simSetupFolder,
               optSetupFolder,

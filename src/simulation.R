@@ -253,7 +253,7 @@ getSimulParams <- function(i,
 
   indTot <- x["indTot"]
   nPhenoTot <- x["nPheno"]
-
+  # browser()
   # Set NewIndSlope to 0 if SelIntmode = 0
   if (SelIntmode == 0) {
     NewIndSlope = 0

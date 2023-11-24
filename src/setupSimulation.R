@@ -90,16 +90,6 @@ setupSimulation <- function(dataFile,
                        digest(dataFile, file = TRUE))
   filteredDataId <- digest(genoDta)
 
-  # reset the seed
-  # if (!is.null(seed)) {
-  #   set.seed(prevSeed)
-  # }
-  if (!is.null(seed)) {
-      set.seed(seed)
-    }
-
-
-
   # Create breedSimulatR's objects ----
   BSR_Obj <- createBreedSimObj(genoDta = genoDta,
                                specName = specName,
@@ -110,7 +100,12 @@ setupSimulation <- function(dataFile,
                                mu = mu,
                                ve = ve,
                                he = he,
-                               verbose = verbose)
+                               verbose = verbose,
+                               seed = digest::digest2int(as.character(seed)))
+  # reset the seed
+  if (!is.null(seed)) {
+    set.seed(prevSeed)
+  }
   remove(genoDta) # clear memory
 
   # Create fixed parameters list ----
@@ -286,8 +281,12 @@ createBreedSimObj <- function(genoDta,
                            mu,
                            ve,
                            he,
-                           verbose) {
-
+                           verbose,
+                           seed = NULL) {
+  # Set seed
+  if (!is.null(seed)){
+    set.seed(seed)
+  }
 
   ## specie definition ---------------------
   if (verbose) cat("\nCreate breedSimulatR's specie object\n")
