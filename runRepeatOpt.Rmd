@@ -50,8 +50,8 @@ nCPU <- detectCores()
 # nCPU <- 2
 nRepOpt <- 1 # number of optimization repetitions
 # nRepOpt <- 1024 # number of optimization repetitions
-repRes_nRep <- 8 # number of opt result evaluations   #CHANGE HERE
-repRes_nCpus <- 8 # number of core to use for opt result evaluations
+repRes_nRep <- 100 # number of opt result evaluations   #CHANGE HERE
+repRes_nCpus <- 100 # number of core to use for opt result evaluations
 
 simSetupFolder <- "simSetups"
 optSetupFolder <- "optSetups"

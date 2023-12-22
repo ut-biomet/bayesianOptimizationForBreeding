@@ -316,6 +316,7 @@ getSimulParams <- function(i,
 calcNnew <- function(nTot, nGen, gen1 = NA, r = 0) {
 
   #checks:
+  # browser()
 
 
   if (is.na(gen1)) {
