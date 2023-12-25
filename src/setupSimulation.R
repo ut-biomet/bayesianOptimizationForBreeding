@@ -137,8 +137,37 @@ setupSimulation <- function(dataFile,
   selectMateIndsId = paste0("selectMateInds", "_", digest(selectMateInds))
   aggrFunNameId    = paste0(aggrFunName, "_", digest(aggrFun))
 
+  # browser()
   # Create optimized parameters: ----
-  optParams <- makeParamSet(
+  if (SelIntmode != 0) {
+    optParams <- makeParamSet(
+      makeNumericParam(id = "i",
+                       lower = 0.01,
+                       upper = 0.99,
+                       default = 0.5),
+      makeNumericParam(id = "iHomo",
+                       lower = 0.01,
+                       upper = 0.99,
+                       default = 0.5),
+      makeNumericParam(id = "bRep",
+                       lower = 0.01,
+                       upper = 0.99,
+                       default = 0.5),
+      makeIntegerParam(id = "phenoFreq",
+                       lower = 1,
+                       upper = fp$nGen,
+                       default = 1),
+      makeNumericParam(id = "NewIndSlope",
+                       lower = -1,
+                       upper = 1,
+                       default = 0),
+      makeNumericParam(id = "SelIntSlope",
+                       lower = -1,
+                       upper = 1,
+                       default = 0)
+    )
+  }else {
+    optParams <- makeParamSet(
     makeNumericParam(id = "i",
                      lower = 0.01,
                      upper = 0.99,
@@ -154,22 +183,15 @@ setupSimulation <- function(dataFile,
     makeIntegerParam(id = "phenoFreq",
                      lower = 1,
                      upper = fp$nGen,
-                     default = 1),
-    makeNumericParam(id = "NewIndSlope",
-                     lower = -1,
-                     upper = 1,
-                     default = 0),
-    makeNumericParam(id = "SelIntSlope",
-                     lower = -1,
-                     upper = 1,
-                     default = 0)
-  )
+                     default = 1)
+  )}
 
 
 
   # Create Objective function ----
   objFun <- createObjFun(fixedParams = fp,
-                         breedSimOpt = breedSimOpt)
+                         breedSimOpt = breedSimOpt,
+                         SelIntmode = SelIntmode)
 
 
   # Finalization ----
@@ -368,32 +390,57 @@ createBreedSimObj <- function(genoDta,
 
 
 createObjFun <- function(fixedParams,
-                         breedSimOpt) {
-
-  # Create a simple function ----
-  # This function is doing the simulation with only one vector (x)
-  # as parameter. This is necessary for using `mlrMBO`:
-  fun <- function(x) {
-    breedSimOpt(i = x[1],
-                iHomo = x[2],
-                bRep = x[3],
-                phenoFreq = x[4],
-                NewIndSlope = x[5],
-                SelIntSlope = x[6],
-                seed = x[7],
-                budget = fixedParams$budget,
-                nGen = fixedParams$nGen,
-                initPop = fixedParams$initPop,
-                plotCost = fixedParams$plotCost,
-                newIndCost = fixedParams$newIndCost,
-                trait = fixedParams$trait,
-                SelIntmode = fixedParams$SelIntmode,
-                phenotyper = fixedParams$phenotyper,
-                createModel = fixedParams$createModel,
-                selectMateInds = fixedParams$selectMateInds,
-                aggrFun = fixedParams$aggrFun,
-                aggrFunName = fixedParams$aggrFunName,
-                verbose = FALSE)
+                         breedSimOpt,
+                         SelIntmode) {
+  if (SelIntmode == 0) {
+    fun <- function(x) {
+      breedSimOpt(i = x[1],
+                  iHomo = x[2],
+                  bRep = x[3],
+                  phenoFreq = x[4],
+                  NewIndSlope = 0,
+                  SelIntSlope = 0,
+                  seed = x[5],
+                  budget = fixedParams$budget,
+                  nGen = fixedParams$nGen,
+                  initPop = fixedParams$initPop,
+                  plotCost = fixedParams$plotCost,
+                  newIndCost = fixedParams$newIndCost,
+                  trait = fixedParams$trait,
+                  SelIntmode = fixedParams$SelIntmode,
+                  phenotyper = fixedParams$phenotyper,
+                  createModel = fixedParams$createModel,
+                  selectMateInds = fixedParams$selectMateInds,
+                  aggrFun = fixedParams$aggrFun,
+                  aggrFunName = fixedParams$aggrFunName,
+                  verbose = FALSE)
+    }
+  } else {
+    # Create a simple function ----
+    # This function is doing the simulation with only one vector (x)
+    # as parameter. This is necessary for using `mlrMBO`:
+    fun <- function(x) {
+      breedSimOpt(i = x[1],
+                  iHomo = x[2],
+                  bRep = x[3],
+                  phenoFreq = x[4],
+                  NewIndSlope = x[5],
+                  SelIntSlope = x[6],
+                  seed = x[7],
+                  budget = fixedParams$budget,
+                  nGen = fixedParams$nGen,
+                  initPop = fixedParams$initPop,
+                  plotCost = fixedParams$plotCost,
+                  newIndCost = fixedParams$newIndCost,
+                  trait = fixedParams$trait,
+                  SelIntmode = fixedParams$SelIntmode,
+                  phenotyper = fixedParams$phenotyper,
+                  createModel = fixedParams$createModel,
+                  selectMateInds = fixedParams$selectMateInds,
+                  aggrFun = fixedParams$aggrFun,
+                  aggrFunName = fixedParams$aggrFunName,
+                  verbose = FALSE)
+    }
   }
   fun
 }

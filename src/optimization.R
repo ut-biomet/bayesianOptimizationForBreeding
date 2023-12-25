@@ -213,6 +213,7 @@ bayesianOptimization <- function(
       colnames(results)[1] <- i
     }
   }
+  # browser()
   # final point prediction
   # if (length(run$models) != 0) {
   #   model <- run$models[[1]]$learner.model
@@ -530,7 +531,7 @@ repeatOptResults <- function(optRes,
                              nCpus = 1,
                              mainSeed = NULL,
                              outputFolder = 'results') {
-
+  # browser()
   startTime <- Sys.time()
 
   cat("Start optimization results repetition...\n")
@@ -622,6 +623,15 @@ singleSimulation <- function(i,
   rep_x <- matrix(rep(c(i, iHomo, bRep, phenoFreq,NewIndSlope,SelIntSlope), nRep),
                   nrow = nRep,
                   byrow = TRUE)
+
+  # set param to 0 if NULL
+  if (is.null(NewIndSlope)) {
+    NewIndSlope <- 0
+  }
+  if (is.null(SelIntSlope)) {
+    SelIntSlope <- 0
+  }
+
 
   if (!is.null(seeds)) {
     if (length(seeds == 1)) {

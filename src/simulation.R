@@ -455,11 +455,11 @@ slope_i <- function(
    #check bounds
   if (i0_Bounds[1] > i0 | i0 > i0_Bounds[2])
     {
-    errorCondition(paste0("i0 Not in bounds [",i0_Bounds,"]"))
+    errorCondition(paste0("i0 = ", i0," Not in bounds [",i0_Bounds,"]"))
   }
   if (SelIntSlope_Bounds[1] > SelIntSlope | SelIntSlope > SelIntSlope_Bounds[2])
     {
-    errorCondition(paste0("SelIntSlope Not in bounds [",SelIntSlope_Bounds,"]"))
+    errorCondition(paste0("SelIntSlope = ", SelIntSlope,"Not in bounds [",SelIntSlope_Bounds,"]"))
   }
 
   # Modes
