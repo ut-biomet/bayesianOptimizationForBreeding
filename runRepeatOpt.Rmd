@@ -164,7 +164,9 @@ varSetupParams <- list(
   plotBudjetPerGen = c(200),#, 600),
   # he = c(0.7, 0.3)
   he = c(0.3),
-  SelIntmode = SelIntmode #selection intensity function (slope_i function)
+  SelIntmode = SelIntmode, #selection intensity function (slope_i function)
+  Fixed_nNew = Fixed_nNew,
+  Fixed_SelInt = Fixed_SelInt
 )
 ```
 

@@ -56,6 +56,8 @@ setupSimulation <- function(dataFile,
                             plotBudjetPerGen = NULL,
                             nSNP = NULL,
                             SelIntmode = NULL, # Mode for the slope_i function
+                            Fixed_nNew,
+                            Fixed_SelInt,
                             mu = 0,
                             he = NULL,
                             ve = NULL,
@@ -139,59 +141,94 @@ setupSimulation <- function(dataFile,
 
   # browser()
   # Create optimized parameters: ----
-  if (SelIntmode != 0) {
-    optParams <- makeParamSet(
-      makeNumericParam(id = "i",
-                       lower = 0.01,
-                       upper = 0.99,
-                       default = 0.5),
-      makeNumericParam(id = "iHomo",
-                       lower = 0.01,
-                       upper = 0.99,
-                       default = 0.5),
-      makeNumericParam(id = "bRep",
-                       lower = 0.01,
-                       upper = 0.99,
-                       default = 0.5),
-      makeIntegerParam(id = "phenoFreq",
-                       lower = 1,
-                       upper = fp$nGen,
-                       default = 1),
-      makeNumericParam(id = "NewIndSlope",
-                       lower = -1,
-                       upper = 1,
-                       default = 0),
-      makeNumericParam(id = "SelIntSlope",
-                       lower = -1,
-                       upper = 1,
-                       default = 0)
-    )
-  }else {
-    optParams <- makeParamSet(
-    makeNumericParam(id = "i",
-                     lower = 0.01,
-                     upper = 0.99,
-                     default = 0.5),
-    makeNumericParam(id = "iHomo",
-                     lower = 0.01,
-                     upper = 0.99,
-                     default = 0.5),
-    makeNumericParam(id = "bRep",
-                     lower = 0.01,
-                     upper = 0.99,
-                     default = 0.5),
-    makeIntegerParam(id = "phenoFreq",
-                     lower = 1,
-                     upper = fp$nGen,
-                     default = 1)
-  )}
+
+
+  list_param <- list(makeNumericParam(id = "i",
+                                      lower = 0.01,
+                                      upper = 0.99,
+                                      default = 0.5),
+                     makeNumericParam(id = "iHomo",
+                                      lower = 0.01,
+                                      upper = 0.99,
+                                      default = 0.5),
+                     makeNumericParam(id = "bRep",
+                                      lower = 0.01,
+                                      upper = 0.99,
+                                      default = 0.5),
+                     makeIntegerParam(id = "phenoFreq",
+                                      lower = 1,
+                                      upper = fp$nGen,
+                                      default = 1),
+                     makeNumericParam(id = "NewIndSlope",
+                                      lower = -1,
+                                      upper = 1,
+                                      default = 0),
+                     makeNumericParam(id = "SelIntSlope",
+                                      lower = -1,
+                                      upper = 1,
+                                      default = 0))
+
+  if (!(Fixed_nNew & Fixed_SelInt)) {
+    list_param <- list_param[-c(Fixed_nNew*5, Fixed_SelInt*6)]
+  }
+
+  optParams <- do.call(makeParamSet,list_param)
+
+  # if (SelIntmode != 0) {
+  #   optParams <- makeParamSet(
+  #     makeNumericParam(id = "i",
+  #                      lower = 0.01,
+  #                      upper = 0.99,
+  #                      default = 0.5),
+  #     makeNumericParam(id = "iHomo",
+  #                      lower = 0.01,
+  #                      upper = 0.99,
+  #                      default = 0.5),
+  #     makeNumericParam(id = "bRep",
+  #                      lower = 0.01,
+  #                      upper = 0.99,
+  #                      default = 0.5),
+  #     makeIntegerParam(id = "phenoFreq",
+  #                      lower = 1,
+  #                      upper = fp$nGen,
+  #                      default = 1),
+  #     makeNumericParam(id = "NewIndSlope",
+  #                      lower = -1,
+  #                      upper = 1,
+  #                      default = 0),
+  #     makeNumericParam(id = "SelIntSlope",
+  #                      lower = -1,
+  #                      upper = 1,
+  #                      default = 0)
+  #   )
+  # }else {
+  #   optParams <- makeParamSet(
+  #   makeNumericParam(id = "i",
+  #                    lower = 0.01,
+  #                    upper = 0.99,
+  #                    default = 0.5),
+  #   makeNumericParam(id = "iHomo",
+  #                    lower = 0.01,
+  #                    upper = 0.99,
+  #                    default = 0.5),
+  #   makeNumericParam(id = "bRep",
+  #                    lower = 0.01,
+  #                    upper = 0.99,
+  #                    default = 0.5),
+  #   makeIntegerParam(id = "phenoFreq",
+  #                    lower = 1,
+  #                    upper = fp$nGen,
+  #                    default = 1)
+  # )}
 
 
 
   # Create Objective function ----
   objFun <- createObjFun(fixedParams = fp,
                          breedSimOpt = breedSimOpt,
-                         SelIntmode = SelIntmode)
+                         SelIntmode = SelIntmode,
+                         Fixed_nNew = Fixed_nNew,
+                         Fixed_SelInt = Fixed_SelInt)
 
 
   # Finalization ----
@@ -391,16 +428,19 @@ createBreedSimObj <- function(genoDta,
 
 createObjFun <- function(fixedParams,
                          breedSimOpt,
-                         SelIntmode) {
-  if (SelIntmode == 0) {
-    fun <- function(x) {
+                         SelIntmode,
+                         Fixed_nNew, # Fix the slope parameter for New Individuals to 0
+                         Fixed_SelInt # Fix the slope parameter for Selection Intensity to 0
+                         ) {
+      fun <- function(x) {
       breedSimOpt(i = x[1],
                   iHomo = x[2],
                   bRep = x[3],
                   phenoFreq = x[4],
-                  NewIndSlope = 0,
-                  SelIntSlope = 0,
-                  seed = x[5],
+                  NewIndSlope = (!Fixed_nNew) * x[5],
+                  # Relocate the parameter in the x vector if NewIndSlope is not optimized
+                  SelIntSlope = (!Fixed_SelInt) * x[(6 - Fixed_nNew)],
+                  seed = x[(7 - Fixed_nNew - Fixed_SelInt)],
                   budget = fixedParams$budget,
                   nGen = fixedParams$nGen,
                   initPop = fixedParams$initPop,
@@ -415,32 +455,5 @@ createObjFun <- function(fixedParams,
                   aggrFunName = fixedParams$aggrFunName,
                   verbose = FALSE)
     }
-  } else {
-    # Create a simple function ----
-    # This function is doing the simulation with only one vector (x)
-    # as parameter. This is necessary for using `mlrMBO`:
-    fun <- function(x) {
-      breedSimOpt(i = x[1],
-                  iHomo = x[2],
-                  bRep = x[3],
-                  phenoFreq = x[4],
-                  NewIndSlope = x[5],
-                  SelIntSlope = x[6],
-                  seed = x[7],
-                  budget = fixedParams$budget,
-                  nGen = fixedParams$nGen,
-                  initPop = fixedParams$initPop,
-                  plotCost = fixedParams$plotCost,
-                  newIndCost = fixedParams$newIndCost,
-                  trait = fixedParams$trait,
-                  SelIntmode = fixedParams$SelIntmode,
-                  phenotyper = fixedParams$phenotyper,
-                  createModel = fixedParams$createModel,
-                  selectMateInds = fixedParams$selectMateInds,
-                  aggrFun = fixedParams$aggrFun,
-                  aggrFunName = fixedParams$aggrFunName,
-                  verbose = FALSE)
-    }
-  }
   fun
 }
