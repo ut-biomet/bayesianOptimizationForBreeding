@@ -71,15 +71,17 @@ breedSimOpt <- function(i,
                       NewIndSlope = NewIndSlope,
                       SelIntSlope = SelIntSlope,
                       SelIntmode = SelIntmode)
+
+    # browser()
     params <- do.call(getSimulParams, newParams)
-    cat("nIndIni : ",initPop$nInd)
-    cat("\r\n NewIndSlope : ", NewIndSlope)
-    cat("\r\n        nNew : ", params$nNew)
-    cat("\r\n SelIntSlope : ", SelIntSlope)
-    cat("\r\n           i : ", slope_i(i0 = i, SelIntSlope = SelIntSlope,
-                                       nGen = nGen - 1, SelIntmode = SelIntmode,
-                                       i0_Bounds = c(0,1), SelIntSlope_Bounds = c(-1,1)))
-    cat("\r\n  nSelected : ", params$nSelected)
+    # cat("nIndIni : ",initPop$nInd)
+    # cat("\r\n NewIndSlope : ", NewIndSlope)
+    # cat("\r\n        nNew : ", params$nNew)
+    # cat("\r\n SelIntSlope : ", SelIntSlope)
+    # cat("\r\n           i : ", slope_i(i0 = i, SelIntSlope = SelIntSlope,
+    #                                    nGen = nGen - 1, SelIntmode = SelIntmode,
+    #                                    i0_Bounds = c(0,1), SelIntSlope_Bounds = c(-1,1)))
+    # cat("\r\n  nSelected : ", params$nSelected)
     # browser()
     finalGVs <- simuleBreeding(nPheno = params$nPheno,
                                nSelected = params$nSelected,
@@ -266,6 +268,7 @@ getSimulParams <- function(i,
 
   # 3 - calc number of selected individuals for each generation
   # nSel <- pmax(round(nNew[1:nGen-1] * i), 1) # MODIFICATION TO BE MADE HERE for i
+  # browser()
   nSel <- pmax(round(nNew[1:nGen-1] * slope_i(i0 = i, SelIntSlope = SelIntSlope,
                                               nGen = nGen - 1, SelIntmode = SelIntmode,
                                               i0_Bounds = c(0,1), SelIntSlope_Bounds = c(-1,1)) #careful if the bounds changes
@@ -453,6 +456,7 @@ slope_i <- function(
     i0_Bounds = c(0,1),
     SelIntSlope_Bounds = c(-1,1)){
    #check bounds
+  # browser()
   if (i0_Bounds[1] > i0 | i0 > i0_Bounds[2])
     {
     errorCondition(paste0("i0 = ", i0," Not in bounds [",i0_Bounds,"]"))

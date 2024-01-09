@@ -9,7 +9,7 @@ library(dotenv)
 load_dot_env()
 source("src/utils.R")
 
-SelIntmode = 1 #selection intensity function (slope_i function)
+SelIntmode = 0 #selection intensity function (slope_i function)
 Fixed_nNew = TRUE
 Fixed_SelInt = FALSE
 
@@ -33,13 +33,13 @@ for (StartPop_k in 1:length(SeedsForPopulationSetup)){
   PopSetupSeed = SeedsForPopulationSetup[StartPop_k]
   BOseed <- SeedsForBO[StartPop_k]
   rmarkdown::render('runRepeatOpt.Rmd',
-                    output_file = paste0('runRepeatOpt_', t, "-initPop-",floor(StartPop_k/BORep),'|',
+                    output_file = paste0('runRepeatOpt_', t, "-initPop-",floor(StartPop_k/BORep)+1,'|',
                                          floor(length(SeedsForPopulationSetup)/BORep)),
                     params = list(PopSetupSeed = PopSetupSeed,
                                   SelIntmode = SelIntmode,
                                   Fixed_nNew = Fixed_nNew,
                                   Fixed_SelInt = Fixed_SelInt,
-                                  StartPop_k = floor(StartPop_k/BORep),
+                                  StartPop_k = floor(StartPop_k/BORep)+1,
                                   BOseed = BOseed))
   # sendNotification("optimization finished !!!")
 }
@@ -48,3 +48,13 @@ for (StartPop_k in 1:length(SeedsForPopulationSetup)){
 # slackr::slackr_upload(filename = "runRepeatOpt.md")
 
 
+# StartPop_k = 1
+# PopSetupSeed = SeedsForPopulationSetup[StartPop_k]
+# BOseed <- SeedsForBO[StartPop_k]
+#
+# PopSetupSeed = PopSetupSeed
+# SelIntmode = SelIntmode
+# Fixed_nNew = Fixed_nNew
+# Fixed_SelInt = Fixed_SelInt
+# StartPop_k = floor(StartPop_k/BORep) + 1
+# BOseed = BOseed

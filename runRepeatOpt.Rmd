@@ -160,7 +160,7 @@ Setups with all of these combination will be created.
 ```{r varSetup-3}
 varSetupParams <- list(
   # nGen = c(5, 10),
-  nGen = c(5),
+  nGen = c(10),
   plotBudjetPerGen = c(200),#, 600),
   # he = c(0.7, 0.3)
   he = c(0.3),

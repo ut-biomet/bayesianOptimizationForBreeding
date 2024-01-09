@@ -168,7 +168,7 @@ setupSimulation <- function(dataFile,
                                       upper = 1,
                                       default = 0))
 
-  if (!(Fixed_nNew & Fixed_SelInt)) {
+  if (Fixed_nNew | Fixed_SelInt) {
     list_param <- list_param[-c(Fixed_nNew*5, Fixed_SelInt*6)]
   }
 
@@ -437,9 +437,9 @@ createObjFun <- function(fixedParams,
                   iHomo = x[2],
                   bRep = x[3],
                   phenoFreq = x[4],
-                  NewIndSlope = (!Fixed_nNew) * x[5],
+                  NewIndSlope = ifelse(Fixed_nNew, 0, x[5]),
                   # Relocate the parameter in the x vector if NewIndSlope is not optimized
-                  SelIntSlope = (!Fixed_SelInt) * x[(6 - Fixed_nNew)],
+                  SelIntSlope = ifelse(Fixed_SelInt, 0, x[(6 - Fixed_nNew)]),
                   seed = x[(7 - Fixed_nNew - Fixed_SelInt)],
                   budget = fixedParams$budget,
                   nGen = fixedParams$nGen,
