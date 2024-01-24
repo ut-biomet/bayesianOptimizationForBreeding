@@ -131,7 +131,7 @@ setupOpt <- function(simSetup_dataFile,
     phenoFreq = x[4]
     NewIndSlope = x[5]
     SelIntSlope = x[6]
-    browser()
+    # browser()
     # get simulation parameters
     newParams <- list(i = i,
                       iHomo = iHomo,

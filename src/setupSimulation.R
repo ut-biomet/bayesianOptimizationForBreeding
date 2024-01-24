@@ -56,8 +56,8 @@ setupSimulation <- function(dataFile,
                             plotBudjetPerGen = NULL,
                             nSNP = NULL,
                             SelIntmode = NULL, # Mode for the slope_i function
-                            Fixed_nNew,
-                            Fixed_SelInt,
+                            Fixed.nNew,
+                            Fixed.SelInt,
                             mu = 0,
                             he = NULL,
                             ve = NULL,
@@ -79,7 +79,7 @@ setupSimulation <- function(dataFile,
 
 
   # Load geno data ----
-  # browser()
+  browser()
   # set random seed:
   if (!is.null(seed)) {
     prevSeed <- .Random.seed
@@ -168,8 +168,8 @@ setupSimulation <- function(dataFile,
                                       upper = 1,
                                       default = 0))
 
-  if (Fixed_nNew | Fixed_SelInt) {
-    list_param <- list_param[-c(Fixed_nNew*5, Fixed_SelInt*6)]
+  if (Fixed.nNew | Fixed.SelInt) {
+    list_param <- list_param[-c(Fixed.nNew*5, Fixed.SelInt*6)]
   }
 
   optParams <- do.call(makeParamSet,list_param)
@@ -227,8 +227,8 @@ setupSimulation <- function(dataFile,
   objFun <- createObjFun(fixedParams = fp,
                          breedSimOpt = breedSimOpt,
                          SelIntmode = SelIntmode,
-                         Fixed_nNew = Fixed_nNew,
-                         Fixed_SelInt = Fixed_SelInt)
+                         Fixed.nNew = Fixed.nNew,
+                         Fixed.SelInt = Fixed.SelInt)
 
 
   # Finalization ----
@@ -429,18 +429,18 @@ createBreedSimObj <- function(genoDta,
 createObjFun <- function(fixedParams,
                          breedSimOpt,
                          SelIntmode,
-                         Fixed_nNew, # Fix the slope parameter for New Individuals to 0
-                         Fixed_SelInt # Fix the slope parameter for Selection Intensity to 0
+                         Fixed.nNew, # Fix the slope parameter for New Individuals to 0
+                         Fixed.SelInt # Fix the slope parameter for Selection Intensity to 0
                          ) {
       fun <- function(x) {
       breedSimOpt(i = x[1],
                   iHomo = x[2],
                   bRep = x[3],
                   phenoFreq = x[4],
-                  NewIndSlope = ifelse(Fixed_nNew, 0, x[5]),
+                  NewIndSlope = ifelse(Fixed.nNew, 0, x[5]),
                   # Relocate the parameter in the x vector if NewIndSlope is not optimized
-                  SelIntSlope = ifelse(Fixed_SelInt, 0, x[(6 - Fixed_nNew)]),
-                  seed = x[(7 - Fixed_nNew - Fixed_SelInt)],
+                  SelIntSlope = ifelse(Fixed.SelInt, 0, x[(6 - Fixed.nNew)]),
+                  seed = x[(7 - Fixed.nNew - Fixed.SelInt)],
                   budget = fixedParams$budget,
                   nGen = fixedParams$nGen,
                   initPop = fixedParams$initPop,

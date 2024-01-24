@@ -159,14 +159,14 @@ Setups with all of these combination will be created.
 
 ```{r varSetup-3}
 varSetupParams <- list(
-  # nGen = c(5, 10),
-  nGen = c(10),
+  nGen = c(5, 10),
+  # nGen = c(10),
   plotBudjetPerGen = c(200),#, 600),
-  # he = c(0.7, 0.3)
-  he = c(0.3),
+  he = c(0.7, 0.3),
+  # he = c(0.3),
   SelIntmode = SelIntmode, #selection intensity function (slope_i function)
-  Fixed_nNew = Fixed_nNew,
-  Fixed_SelInt = Fixed_SelInt
+  Fixed.nNew = Fixed.nNew,
+  Fixed.SelInt = Fixed.SelInt
 )
 ```
 
@@ -225,7 +225,7 @@ optP <- list(
   filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
   propose.points = 8, # number of points evaluated at each iteration
   nCpusProposePoints = 8, # number of core to use for evaluating the points at each iteration
-  totalIter = 3, # total number of iteration
+  totalIter = 2, # total number of iteration
   # time.budget = 60*30, # total time available for the optimization
   initTrainSize = 16, # initial training data size (must be at least the number of dimension)
   funEval = 1, # see below
