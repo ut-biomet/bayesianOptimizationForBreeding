@@ -1,0 +1,280 @@
+---
+title: "Fixed-Variable Parameter"
+output: html_document
+date: '2024-01-11'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source(file = '~/Desktop/bayesianOptimizationForBreeding/CreateResultsTable.R')
+library(dbplyr)
+library(plotly)
+Repo.path <- "~/Desktop/Progress Report/5InitPop-20BayesianOptimization/output-resultRepetition/"
+set.seed(2024)
+```
+
+```{r}
+# Get file names
+Table <- CreateResFileTable(repositoryPath = Repo.path,
+                            ParamNames = c("repRes","Method","nGen", "plotBudjetPerGen", "he", "SelIntmode",
+                                           "FixednNew","FixedSelInt","ToRemove",
+                                           "nIter40", "mainSeed")) %>% 
+CleanResFileTable(ParamNames = c("SelIntmode","FixednNew", "FixedSelInt","mainSeed"),
+                  VarsOfInterest = c("SelIntmode"))
+
+cat("Number of Optimizations : \n")
+table(FixednNew = Table$FixednNew, FixedSelInt = Table$FixedSelInt)
+```
+
+
+```{r}
+#Read files
+Filepaths.list = paste0(Repo.path, Table$Path, Table$FileNames) %>% .[-Files_with_errorID]
+
+
+# 
+# segment <- min(Files_with_errorID):27 %>% .[!(. %in% Files_with_errorID)] 
+# for (pathID in segment){
+#   cat(pathID, '\n')
+#   path <- Filepaths[pathID]
+#   ResFile <- readRDS(path) 
+#   remove(ResFile)
+# }
+# Files_with_errorID <- c(Files_with_errorID, min(Files_with_errorID):21)
+# Files_with_errorID
+
+
+# for(path in Filepaths) {
+#   resfile <- readRDS(path)
+#   remove(resfile)
+# }
+
+OptParam.table <- GetOptimizedParams(FilePaths.list = Filepaths,
+                                     GetInitPopHash = TRUE,
+                                     KeepOptValue = TRUE,
+                                     IsRepFile = TRUE)
+OptParam.table <- cbind(SelIntmode = as.factor(Table$SelIntmode)[-Files_with_errorID],
+                        FixednNew = Table$FixednNew[-Files_with_errorID], 
+                        FixedSelInt = Table$FixedSelInt[-Files_with_errorID], 
+                        OptParam.table)
+
+
+# balanced results
+cat("Number of Optimizations for each function x initialPop:")
+OptParam.table$OptFun = paste0(OptParam.table$SelIntmode, "-", 
+                               "FixednNew-",OptParam.table$FixednNew, 
+                               "_FixedSelInt-",OptParam.table$FixedSelInt)
+table(OptParam.table$OptFun, OptParam.table$InitPopHash)
+
+
+
+```
+### Optimized parameters
+```{r}
+# dput(colnames(OptParam.table))
+for (Col in c("BVmean", "i", "iHomo", "bRep", "phenoFreq", "SelIntSlope", "NewIndSlope")) {
+  fig <- plot_ly(data = OptParam.table, y = as.formula(paste0("~",Col)), color = ~OptFun, type = "box") %>%
+  layout(
+    title = paste(Col, "estimations on n=20 optimizations on 5 initial populations"),
+    # geom_vline(xintercept = 3)
+    yaxis = list(title = Col),  # Add your y-axis label if needed
+    legend = list(title = "Parameters estimations on n=20 optimizations on a single initial population", traceorder = "normal")
+  )
+print(fig)
+}
+
+```
+
+### Optimized parameters
+```{r}
+InitPop.List = unique(OptParam.table$InitPopHash)
+InitPop.ID = 2
+OptParam.table.1Pop <- OptParam.table[OptParam.table$InitPopHash == InitPop.List[InitPop.ID],]
+for (Col in c("BVmean", "i", "iHomo", "bRep", "phenoFreq", "SelIntSlope", "NewIndSlope")) {
+  fig <- plot_ly(data = OptParam.table.1Pop, y = as.formula(paste0("~",Col)), color = ~OptFun, type = "box") %>%
+  layout(
+    title = paste(Col, "estimations on n=20 optimizations on a single initial population"),
+    # geom_vline(xintercept = 3)
+    yaxis = list(title = Col),  # Add your y-axis label if needed
+    legend = list(title = "Parameters estimations on n=20 optimizations on a single initial population", traceorder = "normal")
+  )
+print(fig)
+}
+
+```
+
+
+```{r}
+initPop = 2
+OptParam.table.Pop1 <- OptParam.table[OptParam.table$InitPopHash == unique(OptParam.table$InitPopHash)[initPop] ,]
+Initpop.meanBV <- mean(OptParam.table.Pop1$InitPopBV) 
+Initpop.meanBV
+for (Col in c("BestBV", "i", "iHomo", "bRep", "phenoFreq", "SelIntSlope", "NewIndSlope")) {
+  fig <- plot_ly(data = OptParam.table.Pop1, y = as.formula(paste0("~",Col)), color = ~OptFun, type = "box") %>%
+    layout(
+      title = Col,
+      yaxis = list(title = Col),  # Add your y-axis label if needed
+      legend = list(title = "SelIntmode", traceorder = "normal")
+      )
+print(fig)
+}
+```
+
+### Get Number of Individuals per generation
+```{r}
+# set.seed(2024)
+source("~/Desktop/bayesianOptimizationForBreeding/src/simulation.R")
+nGen = 10
+budget = 200*nGen
+nIndIni = 198
+initPop = 1
+SelIntmode = 1
+Fixed.nNew = FALSE
+OptParam.table.1pop <- (OptParam.table$SelIntmode == SelIntmode & OptParam.table$Fixed_nNew == Fixed.nNew) %>% 
+# OptParam.table.1pop <- (OptParam.table$InitPopHash == unique(OptParam.table$InitPopHash)[initPop] &
+#                      OptParam.table$SelIntmode == SelIntmode & OptParam.table$Fixed_nNew == Fixed.nNew) %>%
+  OptParam.table[.,]
+OptParam.table.1pop
+SimulParam.table <- lapply(1:nrow(OptParam.table.1pop), function(opt){
+  params <- c(as.list(OptParam.table.1pop[opt,c("i","iHomo","bRep",
+                                                  "phenoFreq","NewIndSlope",
+                                                  "SelIntSlope","SelIntmode")]),
+                     list(budget = budget,
+                          nGen = nGen,
+                          nIndIni = nIndIni))
+  do.call(getSimulParams,params) %>% 
+    .[c("nSelected","nNew")]
+          })
+SimulParam.table <- list(nNew = do.call(rbind, lapply(SimulParam.table,function(opt)opt$nNew)) %>% 
+                           apply(MARGIN = 2,quantile,probs = c(0,0.025,0.5,0.975,1)),
+                         nSelected = do.call(rbind, lapply(SimulParam.table,function(opt)opt$nSelected)) %>% 
+                           apply(MARGIN = 2,quantile,probs = c(0,0.025,0.5,0.975,1)))
+colnames(SimulParam.table$nNew) = colnames(SimulParam.table$nSelected) = paste(1:nGen)
+
+# # Extract necessary values
+x_values <- as.numeric(colnames(SimulParam.table$nNew))
+median_nNew <- SimulParam.table$nNew["50%", ]
+median_nSelected <- SimulParam.table$nSelected["50%", ]
+lower_bound_nNew <- SimulParam.table$nNew["2.5%", ]
+upper_bound_nNew <- SimulParam.table$nNew["97.5%", ]
+lower_bound_nSelected <- SimulParam.table$nSelected["2.5%", ]
+upper_bound_nSelected <- SimulParam.table$nSelected["97.5%", ]
+
+# Create a plot
+plot <- plot_ly()
+
+# Add traces for median lines
+plot <- add_trace(plot, x = ~x_values, y = ~median_nNew, type = 'scatter', mode = 'lines', name = 'nNew (Median) ', line = list(color = 'blue'))
+plot <- add_trace(plot, x = ~x_values, y = ~median_nSelected, type = 'scatter', mode = 'lines', name = 'nSelected (Median)', line = list(color = 'red'))
+
+# Add shaded area between 2.5% and 97.5%
+plot <- add_trace(plot, x = c(rev(x_values), x_values), y = c(rev(upper_bound_nNew), lower_bound_nNew), type = 'scatter', mode = 'lines', fill = 'toself', fillcolor = 'rgba(0,0,255,0.2)', line = list(color = 'rgba(255,255,255,0)'), name = '95% nNew')
+plot <- add_trace(plot, x = c(rev(x_values), x_values), y = c(rev(upper_bound_nSelected), lower_bound_nSelected), type = 'scatter', mode = 'lines', fill = 'toself', fillcolor = 'rgba(255,0,0,0.2)', line = list(color = 'rgba(255,255,255,0)'), name = '95% nSelected')
+
+# Customize layout
+layout <- layout(plot, title = paste0("function-",SelIntmode, "_FixednNew-",Fixed.nNew),
+                 xaxis = list(title = "Generation"), 
+                 yaxis = list(title = "Number Of Individuals",range = c(0, nIndIni)))
+
+# Show the plot
+show(layout)
+
+```
+
+
+# Optimization match (mean on 100 estimated value)
+```{r}
+Fun.list <- c("0-FixednNewTRUE", "1-FixednNewFALSE", "1-FixednNewTRUE")
+win.count = matrix(rep(0, length(Fun.list)^2),ncol = length(Fun.list), nrow = length(Fun.list),
+                   dimnames = list(Fun.list,Fun.list))
+# lines = Wins, columns = loss
+match.cmbn = combn(x = Fun.list,m = 2)
+# keep only the initial populations in which all the optimization have been performed
+InitPop.list <-  OptParam.table$InitPopHash[OptParam.table$OptFun %in% Fun.list]
+InitPop.list <- names(table(InitPop.list))[table(InitPop.list) == 30]
+# InitPop.list
+nMatchPerInitpop <- 10000
+
+for (InitPop in InitPop.list) {
+match.Table <- lapply(Fun.list, function(fun)
+  OptParam.table$BVmean[OptParam.table$InitPopHash == InitPop & 
+                          OptParam.table$OptFun == fun] %>% 
+      sample(nMatchPerInitpop,replace = T)) %>% 
+    do.call(cbind,.) %>% 
+    as.data.frame
+  colnames(match.Table) <- Fun.list
+  for (match in 1:ncol(match.cmbn)){
+    # 
+    matchRes <- sum(match.Table[,match.cmbn[1,match]] > match.Table[,match.cmbn[2,match]])
+    win.count[match.cmbn[1,match], match.cmbn[2,match]] <- 
+      win.count[match.cmbn[1,match], match.cmbn[2,match]] + matchRes
+    win.count[match.cmbn[2,match], match.cmbn[1,match]] <- 
+      win.count[match.cmbn[2,match], match.cmbn[1,match]] + nMatchPerInitpop - matchRes
+  }}
+
+# OptParam.table
+cat("number of initial populations : ",length(InitPop.list),"\n")
+cat("")
+win.count / (nMatchPerInitpop*length(InitPop.list))
+```
+
+### Mixed model
+```{r}
+library(lme4)
+OptParam.table.mxdModel = OptParam.table[OptParam.table$SelIntmode %in% c(0,1),]
+#With this model we want to estimate the fixed effect of the different functions
+# To do that we need to control for Inital Population
+mixed.lmer <- lmer(formula = BVmean ~ OptFun + (1|InitPopHash),
+                   data = OptParam.table.mxdModel)
+summ <- summary(mixed.lmer)
+summ
+
+```
+### 4 Scenarios - Results (1InitPop)
+```{r}
+###############
+TableC <- CreateResFileTable(repositoryPath = Repo.pathC, 
+                             ParamNames = c("Rep","OptMethod", "nGen", "plotBudjetPerGen",
+                                            "he", "SelIntmode", "FixednNew","FixedSelInt",
+                                            "2RM", "nIter", "2RM")) %>% 
+  CleanResFileTable(ParamNames = c("SelIntmode","FixednNew", "FixedSelInt", "he","nGen"),
+                  VarsOfInterest = c("SelIntmode"))
+table(TableC$he,TableC$nGen)
+FilepathsC <- paste0(Repo.pathC,TableC$Path,TableC$FileNames)
+OptParam.tableC <- GetOptimizedParams(FilePaths.list = FilepathsC,
+                                     GetInitPopHash = TRUE,
+                                     KeepOptValue = TRUE, 
+                                     IsRepFile = TRUE)
+OptParam.tableC <- cbind(TableC[,!(colnames(TableC) %in% c("Path","FileNames"))], 
+                        OptParam.tableC)
+OptParam.tableC$OptFun = paste0("FixednNew",OptParam.tableC$FixednNew,"-FixedSelInt",OptParam.tableC$FixedSelInt)
+
+```
+```{r}
+constraints.List <- expand.grid(he = unique(OptParam.tableC$he), 
+                                nGen = unique(OptParam.tableC$nGen)) 
+functions.List <- expand.grid(FixednNew = unique(OptParam.tableC$FixednNew), 
+                              FixedSelInt = unique(OptParam.tableC$FixedSelInt))
+InitPop.list <- unique(OptParam.tableC$InitPopHash)
+library(lme4)
+for (constr in 1:nrow(constraints.List)) {
+OptParam.table.mxdModel = OptParam.tableC[OptParam.tableC$he == constraints.List$he[constr]
+                                        & OptParam.tableC$nGen == constraints.List$nGen[constr],] 
+#With this model we want to estimate the fixed effect of the different functions
+# To do that we need to control for Inital Population
+mixed.lmer <- lmer(formula = BVmean ~ OptFun + (1|InitPopHash),
+                   data = OptParam.table.mxdModel)
+summ <- summary(mixed.lmer)
+# summ$coefficients
+
+cat(paste("\r",colnames(constraints.List), constraints.List[constr,]), "\r")
+print(summ)
+}
+
+# constr = 1
+
+```
+
