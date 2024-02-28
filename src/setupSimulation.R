@@ -79,7 +79,7 @@ setupSimulation <- function(dataFile,
 
 
   # Load geno data ----
-  browser()
+  # browser()
   # set random seed:
   if (!is.null(seed)) {
     prevSeed <- .Random.seed
