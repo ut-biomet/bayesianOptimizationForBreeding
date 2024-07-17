@@ -63,10 +63,11 @@ We create new folders inside the main ones to not overwrite previous results.
 
 ```{r create-outFolders}
 date <- format(knitStartTime, "%Y-%m-%d_%H-%M-%S")
-simSetupFolder <- paste0(simSetupFolder, "/", date, "-(",StartPop_k,")")
-optSetupFolder <- paste0(optSetupFolder, "/", date, "-(",StartPop_k,")")
-optResultFolder <- paste0(optResultFolder, "/", date, "-(",StartPop_k,")")
-repResultFolder <- paste0(repResultFolder, "/", date, "-(",StartPop_k,")")
+Fixed.nNewFALSE-Fixed.SelIntTRUE-(InitPop1)
+simSetupFolder <- paste0(simSetupFolder, "/", date,"_Fixed.nNew-",Fixed.nNew,"_Fixed.SelInt-",Fixed.SelInt, "_(InitPop-",StartPop_k,")")
+optSetupFolder <- paste0(optSetupFolder, "/", date,"_Fixed.nNew-",Fixed.nNew,"_Fixed.SelInt-",Fixed.SelInt, "_(InitPop-",StartPop_k,")")
+optResultFolder <- paste0(optResultFolder, "/", date,"_Fixed.nNew-",Fixed.nNew,"_Fixed.SelInt-",Fixed.SelInt, "_(InitPop-",StartPop_k,")")
+repResultFolder <- paste0(repResultFolder, "/", date,"_Fixed.nNew-",Fixed.nNew,"_Fixed.SelInt-",Fixed.SelInt, "_(InitPop-",StartPop_k,")")
 
 for (dir in c(simSetupFolder,
               optSetupFolder,
@@ -225,7 +226,7 @@ optP <- list(
   filter.proposed.points.tol = 0.001, # threshold defining if 2 points are too close to each-other
   propose.points = 16, # number of points evaluated at each iteration
   nCpusProposePoints = 16, # number of core to use for evaluating the points at each iteration
-  totalIter = 40, # total number of iteration
+  totalIter = 1, # total number of iteration
   # time.budget = 60*30, # total time available for the optimization
   initTrainSize = 16, # initial training data size (must be at least the number of dimension)
   funEval = 1, # see below
